@@ -1,0 +1,75 @@
+From 4844bf59c2cc288860335541f7e758ed1f7c0de4 Mon Sep 17 00:00:00 2001
+From: Andrei Karas <akaras@inbox.ru>
+Date: Sun, 2 Jan 2011 16:34:59 +0200
+Subject: [PATCH 162/226] Add script functions mesn, mesq.
+
+---
+ src/map/script.c | 38 +++++++++++++++++++++++++++++++++++---
+ 1 file changed, 35 insertions(+), 3 deletions(-)
+
+diff --git a/src/map/script.c b/src/map/script.c
+index 336ac6c..625d8e9 100644
+--- a/src/map/script.c
++++ b/src/map/script.c
+@@ -210,6 +210,8 @@ static int parse_cmd;
+  */
+ unsigned char *parse_subexpr (unsigned char *, int);
+ int  buildin_mes (struct script_state *st);
++int  buildin_mesn (struct script_state *st);
++int  buildin_mesq (struct script_state *st);
+ int  buildin_goto (struct script_state *st);
+ int  buildin_callsub (struct script_state *st);
+ int  buildin_callfunc (struct script_state *st);
+@@ -470,6 +472,10 @@ struct
+     {
+     buildin_mes, "mes", "s"},
+     {
++    buildin_mesn, "mesn", "s"},
++    {
++    buildin_mesq, "mesq", "s"},
++    {
+     buildin_next, "next", ""},
+     {
+     buildin_close, "close", ""},
+@@ -2211,9 +2217,35 @@ void pop_stack (struct script_stack *stack, int start, int end)
+  */
+ BUILDIN_FUNC(mes)
+ {
+-    conv_str (st, &(st->stack->stack_data[st->start + 2]));
+-    clif_scriptmes (script_rid2sd (st), st->oid,
+-                    st->stack->stack_data[st->start + 2].u.str);
++    clif_scriptmes (script_rid2sd (st), st->oid, script_getstr(st, 2));
++    return 0;
++}
++
++BUILDIN_FUNC(mesn)
++{
++    char *msg = script_getstr(st, 2);
++    if (!msg)
++        return 0;
++    char *buf = (char *) aCalloc (strlen(msg) + 3, sizeof (char));
++    strcpy (buf, "[");
++    strcat (buf, msg);
++    strcat (buf, "]");
++
++    clif_scriptmes (script_rid2sd (st), st->oid, buf);
++    return 0;
++}
++
++BUILDIN_FUNC(mesq)
++{
++    char *msg = script_getstr(st, 2);
++    if (!msg)
++        return 0;
++    char *buf = (char *) aCalloc (strlen(msg) + 3, sizeof (char));
++    strcpy (buf, "\"");
++    strcat (buf, msg);
++    strcat (buf, "\"");
++
++    clif_scriptmes (script_rid2sd (st), st->oid, buf);
+     return 0;
+ }
+ 
+-- 
+2.1.0
+

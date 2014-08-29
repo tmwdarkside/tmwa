@@ -1,0 +1,366 @@
+From 1a56526975ee8705e7eab2649fe96aba75958241 Mon Sep 17 00:00:00 2001
+From: Andrei Karas <akaras@inbox.ru>
+Date: Thu, 23 Dec 2010 23:32:33 +0200
+Subject: [PATCH 142/226] Port from eathena script commands npcshopitem,
+ npcshopadditem, npcshopdelitem.
+
+---
+ src/common/db.h  |  14 ++++++++
+ src/map/clif.c   |   9 ++---
+ src/map/map.h    |   6 +++-
+ src/map/npc.c    |  43 +++++++++++++---------
+ src/map/script.c | 106 +++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ 5 files changed, 156 insertions(+), 22 deletions(-)
+
+diff --git a/src/common/db.h b/src/common/db.h
+index 8de32d5..a66b900 100644
+--- a/src/common/db.h
++++ b/src/common/db.h
+@@ -46,4 +46,18 @@ void *db_erase (struct dbt *table, void *key);
+ void db_foreach (struct dbt *, int (*)(void *, void *, va_list), ...);
+ void db_final (struct dbt *, int (*)(void *, void *, va_list), ...);
+ 
++/// Finds an entry in an array.
++/// ex: ARR_FIND(0, size, i, list[i] == target);
++///
++/// @param __start   Starting index (ex: 0)
++/// @param __end     End index (ex: size of the array)
++/// @param __var     Index variable
++/// @param __cmp     Expression that returns true when the target entry is found
++#define ARR_FIND(__start, __end, __var, __cmp) \
++    do{ \
++        for( (__var) = (__start); (__var) < (__end); ++(__var) ) \
++            if( __cmp ) \
++                break; \
++    }while(0)
++
+ #endif
+diff --git a/src/map/clif.c b/src/map/clif.c
+index 0e578fc..a125071 100644
+--- a/src/map/clif.c
++++ b/src/map/clif.c
+@@ -1671,16 +1671,17 @@ int clif_buylist (struct map_session_data *sd, struct npc_data *nd)
+ 
+     nullpo_retr (0, sd);
+     nullpo_retr (0, nd);
++    nullpo_retr (0, nd->u.shop.shop_item);
+ 
+     fd = sd->fd;
+     WFIFOW (fd, 0) = 0xc6;
+-    for (i = 0; nd->u.shop_item[i].nameid > 0; i++)
++    for (i = 0; i < nd->u.shop.count && nd->u.shop.shop_item[i].nameid > 0; i++)
+     {
+-        id = itemdb_search (nd->u.shop_item[i].nameid);
++        id = itemdb_search (nd->u.shop.shop_item[i].nameid);
+         if (!id)
+             continue;
+ 
+-        val = nd->u.shop_item[i].value;
++        val = nd->u.shop.shop_item[i].value;
+         WFIFOL (fd, 4 + i * 11) = val;
+         if (!id->flag.value_notdc)
+             val = pc_modifybuyvalue (sd, val);
+@@ -1689,7 +1690,7 @@ int clif_buylist (struct map_session_data *sd, struct npc_data *nd)
+         if (id->view_id > 0)
+             WFIFOW (fd, 13 + i * 11) = id->view_id;
+         else
+-            WFIFOW (fd, 13 + i * 11) = nd->u.shop_item[i].nameid;
++            WFIFOW (fd, 13 + i * 11) = nd->u.shop.shop_item[i].nameid;
+     }
+     WFIFOW (fd, 2) = i * 11 + 4;
+     WFIFOSET (fd, WFIFOW (fd, 2));
+diff --git a/src/map/map.h b/src/map/map.h
+index 4bfbc48..0c8600c 100644
+--- a/src/map/map.h
++++ b/src/map/map.h
+@@ -443,7 +443,11 @@ struct npc_data
+             struct npc_label_list *label_list;
+             int  src_id;
+         } scr;
+-        struct npc_item_list shop_item[1];
++        struct
++        {
++            struct npc_item_list *shop_item;
++            int count;
++        } shop;
+         struct
+         {
+             short xs, ys;
+diff --git a/src/map/npc.c b/src/map/npc.c
+index c32a88d..f238560 100644
+--- a/src/map/npc.c
++++ b/src/map/npc.c
+@@ -1142,19 +1142,19 @@ int npc_buylist (struct map_session_data *sd, int n,
+ 
+     for (i = 0, w = 0, z = 0; i < n; i++)
+     {
+-        for (j = 0; nd->u.shop_item[j].nameid; j++)
++        for (j = 0; j < nd->u.shop.count && nd->u.shop.shop_item[j].nameid; j++)
+         {
+-            if (nd->u.shop_item[j].nameid == item_list[i * 2 + 1])
++            if (nd->u.shop.shop_item[j].nameid == item_list[i * 2 + 1])
+                 break;
+         }
+-        if (nd->u.shop_item[j].nameid == 0)
++        if (j >= nd->u.shop.count || nd->u.shop.shop_item[j].nameid == 0)
+             return 3;
+ 
+-        if (itemdb_value_notdc (nd->u.shop_item[j].nameid))
+-            z += (double) nd->u.shop_item[j].value * item_list[i * 2];
++        if (itemdb_value_notdc (nd->u.shop.shop_item[j].nameid))
++            z += (double) nd->u.shop.shop_item[j].value * item_list[i * 2];
+         else
+             z += (double) pc_modifybuyvalue (sd,
+-                                             nd->u.shop_item[j].value) *
++                                             nd->u.shop.shop_item[j].value) *
+                 item_list[i * 2];
+ //        itemamount += item_list[i * 2];
+ 
+@@ -1414,6 +1414,7 @@ int npc_parse_warp (char *w1, char *w2, char *w3, char *w4)
+     nd = (struct npc_data *) aCalloc (1, sizeof (struct npc_data));
+     nd->bl.id = npc_get_new_npc_id ();
+     nd->n = map_addnpc (m, nd);
++    nd->u.shop.shop_item = 0;
+ 
+     nd->bl.prev = nd->bl.next = NULL;
+     nd->bl.m = m;
+@@ -1489,9 +1490,11 @@ static int npc_parse_shop (char *w1, char *w2, char *w3, char *w4)
+     }
+     m = map_mapname2mapid (mapname);
+ 
+-    nd = (struct npc_data *) aCalloc (1, sizeof (struct npc_data) +
+-                                      sizeof (nd->u.shop_item[0]) * (max +
+-                                                                     1));
++    nd = (struct npc_data *) aCalloc (1, sizeof (struct npc_data));
++
++    nd->u.shop.shop_item = (struct npc_item_list *) aCalloc (1,
++            sizeof (nd->u.shop.shop_item[0]) * (max + 1));
++
+     p = strchr (w4, ',');
+ 
+     while (p && pos < max)
+@@ -1511,7 +1514,7 @@ static int npc_parse_shop (char *w1, char *w2, char *w3, char *w4)
+             {
+                 if (itemdb_exists(f))
+                 {
+-                    nd->u.shop_item[pos].nameid = f;
++                    nd->u.shop.shop_item[pos].nameid = f;
+                     if (value < 0)
+                     {
+                         if (id == NULL)
+@@ -1519,7 +1522,7 @@ static int npc_parse_shop (char *w1, char *w2, char *w3, char *w4)
+                         if (id)
+                             value = id->value_buy * abs (value);
+                     }
+-                    nd->u.shop_item[pos].value = value;
++                    nd->u.shop.shop_item[pos].value = value;
+                     pos++;
+                 }
+             }
+@@ -1539,7 +1542,7 @@ static int npc_parse_shop (char *w1, char *w2, char *w3, char *w4)
+ 
+         if (nameid > 0)
+         {
+-            nd->u.shop_item[pos].nameid = nameid;
++            nd->u.shop.shop_item[pos].nameid = nameid;
+             if (value < 0)
+             {
+                 if (id == NULL)
+@@ -1547,7 +1550,7 @@ static int npc_parse_shop (char *w1, char *w2, char *w3, char *w4)
+                 if (id)
+                     value = id->value_buy * abs (value);
+             }
+-            nd->u.shop_item[pos].value = value;
++            nd->u.shop.shop_item[pos].value = value;
+             pos++;
+         }
+         p = strchr (p, ',');
+@@ -1557,7 +1560,8 @@ static int npc_parse_shop (char *w1, char *w2, char *w3, char *w4)
+         free (nd);
+         return 1;
+     }
+-    nd->u.shop_item[pos++].nameid = 0;
++    nd->u.shop.shop_item[pos++].nameid = 0;
++//    nd->u.shop.count = pos;
+ 
+     nd->bl.prev = nd->bl.next = NULL;
+     nd->bl.m = m;
+@@ -1575,15 +1579,17 @@ static int npc_parse_shop (char *w1, char *w2, char *w3, char *w4)
+     nd->opt2 = 0;
+     nd->opt3 = 0;
+ 
+-    nd = (struct npc_data *) aRealloc (nd,
+-                                       sizeof (struct npc_data) +
+-                                       sizeof (nd->u.shop_item[0]) * pos);
++    nd->u.shop.shop_item = (struct npc_item_list *) aRealloc (nd->u.shop.shop_item,
++                            sizeof (nd->u.shop.shop_item[0]) * pos);
+ 
+     //printf("shop npc %s %d read done\n",mapname,nd->bl.id);
+     npc_shop++;
+     nd->bl.type = BL_NPC;
+     nd->bl.subtype = SHOP;
+     nd->n = map_addnpc (m, nd);
++    nd->u.shop.count = pos - 1;
++    if (nd->u.shop.count < 0)
++        nd->u.shop.count = 0;
+     map_addblock (&nd->bl);
+     clif_spawnnpc (nd);
+     strdb_insert (npcname_db, nd->name, nd);
+@@ -1755,6 +1761,7 @@ static int npc_parse_script (char *w1, char *w2, char *w3, char *w4,
+     }                           // end of �X�N���v�g����
+ 
+     nd = (struct npc_data *) aCalloc (1, sizeof (struct npc_data));
++    nd->u.shop.shop_item = 0;
+ 
+     if (m == -1)
+     {
+@@ -2340,6 +2347,7 @@ struct npc_data *npc_spawn_text (int m, int x, int y,
+     retval->bl.m = m;
+     retval->bl.type = BL_NPC;
+     retval->bl.subtype = MESSAGE;
++    retval->u.shop.shop_item = 0;
+ 
+     safestrncpy (retval->name, name, 24);
+     safestrncpy (retval->exname, name, 24);
+@@ -2388,6 +2396,7 @@ static void npc_free_internal (struct npc_data *nd)
+         free (nd->u.message);
+         nd->u.message = 0;
+     }
++    free (nd->u.shop.shop_item);
+     free (nd);
+ }
+ 
+diff --git a/src/map/script.c b/src/map/script.c
+index a3d661e..8773d0b 100644
+--- a/src/map/script.c
++++ b/src/map/script.c
+@@ -442,6 +442,9 @@ int  buildin_getd (struct script_state *st);
+ int  buildin_setd (struct script_state *st);
+ // <--- [zBuffer] List of dynamic var commands
+ int  buildin_callshop (struct script_state *st); // [Skotlex]
++int  buildin_npcshopitem (struct script_state *st); // [Lance]
++int  buildin_npcshopadditem (struct script_state *st);
++int  buildin_npcshopdelitem (struct script_state *st);
+ 
+ void push_val (struct script_stack *stack, int type, int val);
+ int  run_func (struct script_state *st);
+@@ -919,6 +922,12 @@ struct
+     buildin_compare, "compare", "ss"}, // Lordalfa - To bring strstr to scripting Engine.
+     {
+     buildin_callshop, "callshop", "si"}, // [Skotlex]
++    {
++    buildin_npcshopitem, "npcshopitem", "sii*"}, // [Lance]
++    {
++    buildin_npcshopadditem, "npcshopadditem", "sii*"},
++    {
++    buildin_npcshopdelitem, "npcshopdelitem", "si*"},
+         // End Additions
+     {
+ NULL, NULL, NULL},};
+@@ -8525,6 +8534,103 @@ BUILDIN_FUNC(callshop)
+     return 0;
+ }
+ 
++BUILDIN_FUNC(npcshopitem)
++{
++    const char* npcname = script_getstr(st, 2);
++    struct npc_data* nd = npc_name2id(npcname);
++    int n, i;
++    int amount;
++
++    if (!nd || nd->bl.subtype != SHOP || !nd->u.shop.shop_item)
++    {   //Not found.
++        script_pushint(st, 0);
++        return 0;
++    }
++
++    // get the count of new entries
++    amount = (script_lastdata(st) - 2) / 2;
++
++    // generate new shop item list
++    RECREATE(nd->u.shop.shop_item, struct npc_item_list, amount + 1);
++    for (n = 0, i = 3; n < amount; n ++, i += 2)
++    {
++        nd->u.shop.shop_item[n].nameid = script_getnum(st, i);
++        nd->u.shop.shop_item[n].value = script_getnum(st, i + 1);
++    }
++    nd->u.shop.shop_item[n].nameid = 0;
++    nd->u.shop.shop_item[n].value = 0;
++    nd->u.shop.count = n;
++
++    script_pushint(st, 1);
++    return 0;
++}
++
++BUILDIN_FUNC(npcshopadditem)
++{
++    const char* npcname = script_getstr(st, 2);
++    struct npc_data* nd = npc_name2id(npcname);
++    int n, i;
++    int amount;
++
++    if (!nd || nd->bl.subtype != SHOP || !nd->u.shop.shop_item)
++    {   //Not found.
++        script_pushint(st, 0);
++        return 0;
++    }
++
++    // get the count of new entries
++    amount = (script_lastdata(st) - 2) / 2;
++
++    // append new items to existing shop item list
++    RECREATE(nd->u.shop.shop_item, struct npc_item_list, nd->u.shop.count + amount + 1);
++    for (n = nd->u.shop.count, i = 3; n < nd->u.shop.count + amount; n++, i += 2)
++    {
++        nd->u.shop.shop_item[n].nameid = script_getnum(st, i);
++        nd->u.shop.shop_item[n].value = script_getnum(st, i + 1);
++    }
++    nd->u.shop.shop_item[n].nameid = 0;
++    nd->u.shop.shop_item[n].value = 0;
++    nd->u.shop.count = n;
++
++    script_pushint(st, 1);
++    return 0;
++}
++
++BUILDIN_FUNC(npcshopdelitem)
++{
++    const char* npcname = script_getstr(st, 2);
++    struct npc_data* nd = npc_name2id(npcname);
++    int n, i;
++    int amount;
++    int size;
++
++    if (!nd || nd->bl.subtype != SHOP || !nd->u.shop.shop_item)
++    {   //Not found.
++        script_pushint(st, 0);
++        return 0;
++    }
++
++    amount = script_lastdata(st) - 2;
++    size = nd->u.shop.count;
++
++    // remove specified items from the shop item list
++    for (i = 3; i < 3 + amount; i ++)
++    {
++        ARR_FIND (0, size, n, nd->u.shop.shop_item[n].nameid == script_getnum(st,i));
++        if (n < size)
++        {
++            memmove(&nd->u.shop.shop_item[n], &nd->u.shop.shop_item[n + 1], sizeof(nd->u.shop.shop_item[0])*(size - n));
++            size--;
++        }
++    }
++
++    RECREATE(nd->u.shop.shop_item, struct npc_item_list, size);
++    nd->u.shop.count = size;
++
++    script_pushint(st, 1);
++    return 0;
++}
++
+ //
+ // ��s��main
+ //
+-- 
+2.1.0
+

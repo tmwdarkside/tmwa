@@ -1,0 +1,26 @@
+From f2ebc9e91125197536c3a34b31065d3f76c3d010 Mon Sep 17 00:00:00 2001
+From: Andrei Karas <akaras@inbox.ru>
+Date: Sun, 5 Dec 2010 20:52:10 +0200
+Subject: [PATCH 088/226] Fix stucked mobs in assist mode if attacker was
+ killed.
+
+---
+ src/map/mob.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/src/map/mob.c b/src/map/mob.c
+index 3d4bbb8..97570eb 100644
+--- a/src/map/mob.c
++++ b/src/map/mob.c
+@@ -2061,7 +2061,7 @@ static int mob_ai_sub_hard (struct block_list *bl, va_list ap)
+         struct map_session_data *asd = map_id2sd (md->attacked_id);
+         if (asd)
+         {
+-            if (asd->invincible_timer == -1 && !pc_isinvisible (asd))
++            if (asd->invincible_timer == -1 && !pc_isinvisible (asd) && !pc_isdead(asd))
+             {
+                 map_foreachinarea (mob_ai_sub_hard_linksearch, md->bl.m,
+                                    md->bl.x - 13, md->bl.y - 13,
+-- 
+2.1.0
+

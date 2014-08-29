@@ -1,0 +1,51 @@
+From a4570fb3858c41917c2830de223f4acde532a88c Mon Sep 17 00:00:00 2001
+From: Andrei Karas <akaras@inbox.ru>
+Date: Tue, 21 Dec 2010 18:11:15 +0200
+Subject: [PATCH 131/226] Fix random crashes in script engine.
+
+---
+ src/common/malloc.c | 7 ++++++-
+ src/map/pc.c        | 2 ++
+ 2 files changed, 8 insertions(+), 1 deletion(-)
+
+diff --git a/src/common/malloc.c b/src/common/malloc.c
+index ecbb8cb..01757d6 100644
+--- a/src/common/malloc.c
++++ b/src/common/malloc.c
+@@ -49,7 +49,12 @@ void *aRealloc_ (void *p, size_t size, const char *file, int line,
+         SHOW_MEMORY_ERROR (file, line, func, "realloc", "out of memory");
+         exit (EXIT_FAILURE);
+     }
+-
++#if 0
++    if (ret != p)
++    {
++        SHOW_MEMORY_ERROR (file, line, func, "realloc", "memory block moved");
++    }
++#endif
+     return ret;
+ }
+ 
+diff --git a/src/map/pc.c b/src/map/pc.c
+index 4e56f8c..6c6545f 100644
+--- a/src/map/pc.c
++++ b/src/map/pc.c
+@@ -7425,6 +7425,7 @@ int pc_setregstr (struct map_session_data *sd, int reg, char *str)
+             return 0;
+         }
+     sd->regstr_num++;
++    str = aStrdup (str);
+     sd->regstr =
+         realloc (sd->regstr, sizeof (sd->regstr[0]) * sd->regstr_num);
+     if (sd->regstr == NULL)
+@@ -7438,6 +7439,7 @@ int pc_setregstr (struct map_session_data *sd, int reg, char *str)
+     sd->regstr[i].index = reg;
+     strcpy (sd->regstr[i].data, str);
+ 
++    aFree (str);
+     return 0;
+ }
+ 
+-- 
+2.1.0
+

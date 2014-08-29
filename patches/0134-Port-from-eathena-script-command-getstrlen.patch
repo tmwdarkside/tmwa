@@ -1,0 +1,52 @@
+From 667e8ee69a24a9052ba246650853563d35a9800d Mon Sep 17 00:00:00 2001
+From: Andrei Karas <akaras@inbox.ru>
+Date: Thu, 23 Dec 2010 03:13:31 +0200
+Subject: [PATCH 134/226] Port from eathena script command getstrlen.
+
+---
+ src/map/script.c | 15 +++++++++++++++
+ 1 file changed, 15 insertions(+)
+
+diff --git a/src/map/script.c b/src/map/script.c
+index 7d42bb8..2870dce 100644
+--- a/src/map/script.c
++++ b/src/map/script.c
+@@ -428,6 +428,7 @@ int  buildin_npcattach (struct script_state *st); // [4144]
+ int  buildin_dispbottom (struct script_state *st); //added from jA [Lupus]
+ int  buildin_recovery (struct script_state *st); // [4144]
+ int  buildin_getmapmobs (struct script_state *st); //end jA addition
++int  buildin_getstrlen (struct script_state *st); //strlen [Valaris]
+ 
+ void push_val (struct script_stack *stack, int type, int val);
+ int  run_func (struct script_state *st);
+@@ -881,6 +882,8 @@ struct
+     buildin_recovery, "recovery", "*"}, // [4144]
+     {
+     buildin_getmapmobs, "getmapmobs", "s"}, //end jA addition
++    {
++    buildin_getstrlen, "getstrlen", "s"}, //strlen [Valaris]
+         // End Additions
+     {
+ NULL, NULL, NULL},};
+@@ -8224,6 +8227,18 @@ BUILDIN_FUNC(getmapmobs)
+     return 0;
+ }
+ 
++//=======================================================
++// strlen [Valaris]
++//-------------------------------------------------------
++BUILDIN_FUNC(getstrlen)
++{
++    const char *str = script_getstr(st, 2);
++    int len = (str) ? (int)strlen(str) : 0;
++
++    script_pushint(st, len);
++    return 0;
++}
++
+ //
+ // ��s��main
+ //
+-- 
+2.1.0
+

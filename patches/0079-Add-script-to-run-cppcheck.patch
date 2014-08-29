@@ -1,0 +1,39 @@
+From 2635472d09fc2e829e69ae2e498d82a34efb23cd Mon Sep 17 00:00:00 2001
+From: Andrei Karas <akaras@inbox.ru>
+Date: Sat, 4 Dec 2010 03:29:42 +0200
+Subject: [PATCH 079/226] Add script to run cppcheck.
+
+---
+ .gitignore | 3 +++
+ makecheck1 | 3 +++
+ 2 files changed, 6 insertions(+)
+ create mode 100755 makecheck1
+
+diff --git a/.gitignore b/.gitignore
+index 7109e19..7f8c10a 100644
+--- a/.gitignore
++++ b/.gitignore
+@@ -9,8 +9,11 @@ eathena-monitor
+ magic-interpreter-parser.h
+ magic-interpreter-parser.c
+ magic-interpreter-lexer.c
++/tools/cppcheck
+ make1.txt
+ make2.txt
++check1.txt
++check2.txt
+ gmon.out
+ gprof.png
+ gprof.txt
+diff --git a/makecheck1 b/makecheck1
+new file mode 100755
+index 0000000..f69b97e
+--- /dev/null
++++ b/makecheck1
+@@ -0,0 +1,3 @@
++#!/bin/bash
++
++cppcheck --enable=all --force -j 5 -v src 1>check1.txt 2>check2.txt
+-- 
+2.1.0
+

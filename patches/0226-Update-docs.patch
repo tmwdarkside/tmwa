@@ -1,0 +1,50 @@
+From 8023f12168f79979d6e4a170557c94880e98218d Mon Sep 17 00:00:00 2001
+From: Andrei Karas <akaras@inbox.ru>
+Date: Wed, 16 Feb 2011 20:03:58 +0200
+Subject: [PATCH 226/226] Update docs.
+
+---
+ doc/scripts.txt | 16 ++++++++++++++++
+ 1 file changed, 16 insertions(+)
+
+diff --git a/doc/scripts.txt b/doc/scripts.txt
+index 8e0ea0e..014de09 100644
+--- a/doc/scripts.txt
++++ b/doc/scripts.txt
+@@ -1,3 +1,9 @@
++format (str, [p,])
++    return formatted string:
++    example: format("test @@ #@@", "line", 1);
++    result: test line #1
++
++
+ g (female, male)
+     return string depend on player gender.
+ 
+@@ -37,9 +43,14 @@ geta16 (variable, index)
+     each value can be 0 - 65535
+ 
+ 
++getitemlink ([id/name])
++    return link to item
++
++
+ getnpcclass [name]
+     return npc class id
+ 
++
+ l (text)
+     translate text to player language
+ 
+@@ -93,3 +104,8 @@ setnpcclass [name,] n
+ 
+ settempnpcclass [name,] n
+     temporary set npc class to given value
++
++
++ver (old, new)
++    return string depend on is client old or new.
++    old client protocol version < 2
+-- 
+2.1.0
+

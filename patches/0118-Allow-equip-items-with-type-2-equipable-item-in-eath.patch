@@ -1,0 +1,26 @@
+From 8ed2408e9cf19f1c9f9f02313597c190cb764ada Mon Sep 17 00:00:00 2001
+From: Andrei Karas <akaras@inbox.ru>
+Date: Sat, 18 Dec 2010 02:53:07 +0200
+Subject: [PATCH 118/226] Allow equip items with type 2 (equipable item in
+ eathena).
+
+---
+ src/map/pc.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/src/map/pc.c b/src/map/pc.c
+index 84ac6d3..298e069 100644
+--- a/src/map/pc.c
++++ b/src/map/pc.c
+@@ -4066,7 +4066,7 @@ int pc_isUseitem (struct map_session_data *sd, int n)
+ 
+     if (item == NULL)
+         return 0;
+-    if (itemdb_type (nameid) != 0)
++    if (itemdb_type (nameid) != 0 && itemdb_type (nameid) != 2)
+         return 0;
+ /*
+     if ((nameid == 605) && map[sd->bl.m].flag.gvg)
+-- 
+2.1.0
+

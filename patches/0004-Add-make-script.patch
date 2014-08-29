@@ -1,0 +1,23 @@
+From 253d2570d1b8ede1488fea8329ba583a54511da8 Mon Sep 17 00:00:00 2001
+From: Andrei Karas <akaras@inbox.ru>
+Date: Wed, 10 Nov 2010 03:29:01 +0200
+Subject: [PATCH 004/226] Add make script
+
+---
+ bmake.sh | 4 ++++
+ 1 file changed, 4 insertions(+)
+ create mode 100755 bmake.sh
+
+diff --git a/bmake.sh b/bmake.sh
+new file mode 100755
+index 0000000..07855f1
+--- /dev/null
++++ b/bmake.sh
+@@ -0,0 +1,4 @@
++#!/bin/bash
++
++export LANG=C
++make >./make1.txt 2>./make2.txt
+-- 
+2.1.0
+

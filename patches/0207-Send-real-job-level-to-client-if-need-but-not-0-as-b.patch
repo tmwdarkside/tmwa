@@ -1,0 +1,26 @@
+From e69f40eed47827737a170079c38a2dff60fb871f Mon Sep 17 00:00:00 2001
+From: Andrei Karas <akaras@inbox.ru>
+Date: Sun, 23 Jan 2011 17:26:26 +0200
+Subject: [PATCH 207/226] Send real job level to client if need, but not 0 as
+ before.
+
+---
+ src/map/clif.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/src/map/clif.c b/src/map/clif.c
+index 887022c..562a87a 100644
+--- a/src/map/clif.c
++++ b/src/map/clif.c
+@@ -2460,7 +2460,7 @@ int clif_updatestatus (struct map_session_data *sd, int type)
+             WFIFOL (fd, 4) = sd->status.base_level;
+             break;
+         case SP_JOBLEVEL:
+-            WFIFOL (fd, 4) = 0;
++            WFIFOL (fd, 4) = sd->status.job_level;
+             break;
+         case SP_MANNER:
+             WFIFOL (fd, 4) = sd->status.manner;
+-- 
+2.1.0
+

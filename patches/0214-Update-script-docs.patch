@@ -1,0 +1,24 @@
+From d006ed5c563bb5eb0619c39e8923b0647834af27 Mon Sep 17 00:00:00 2001
+From: Andrei Karas <akaras@inbox.ru>
+Date: Tue, 1 Feb 2011 16:47:55 +0200
+Subject: [PATCH 214/226] Update script docs.
+
+---
+ doc/scripts.txt | 4 +++-
+ 1 file changed, 3 insertions(+), 1 deletion(-)
+
+diff --git a/doc/scripts.txt b/doc/scripts.txt
+index 0992d8e..ad1b13d 100644
+--- a/doc/scripts.txt
++++ b/doc/scripts.txt
+@@ -1,4 +1,6 @@
+-todo add script functions
++l (text)
++    translate text to player language
++
+ 
+ mesn text
+     show message like: [text]
+-- 
+2.1.0
+

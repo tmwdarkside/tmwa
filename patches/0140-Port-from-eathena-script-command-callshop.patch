@@ -1,0 +1,88 @@
+From 1057e5f3fdad2392eef8501bbe0941ca2435c637 Mon Sep 17 00:00:00 2001
+From: Andrei Karas <akaras@inbox.ru>
+Date: Thu, 23 Dec 2010 18:11:16 +0200
+Subject: [PATCH 140/226] Port from eathena script command callshop.
+
+---
+ src/map/script.c | 51 +++++++++++++++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 51 insertions(+)
+
+diff --git a/src/map/script.c b/src/map/script.c
+index 30d2e4f..ae5dd8e 100644
+--- a/src/map/script.c
++++ b/src/map/script.c
+@@ -441,6 +441,7 @@ int  buildin_distance (struct script_state *st);
+ int  buildin_getd (struct script_state *st);
+ int  buildin_setd (struct script_state *st);
+ // <--- [zBuffer] List of dynamic var commands
++int  buildin_callshop (struct script_state *st); // [Skotlex]
+ 
+ void push_val (struct script_stack *stack, int type, int val);
+ int  run_func (struct script_state *st);
+@@ -916,6 +917,8 @@ struct
+     // <--- [zBuffer] List of dynamic var commands
+     {
+     buildin_compare, "compare", "ss"}, // Lordalfa - To bring strstr to scripting Engine.
++    {
++    buildin_callshop, "callshop", "si"}, // [Skotlex]
+         // End Additions
+     {
+ NULL, NULL, NULL},};
+@@ -8474,6 +8477,54 @@ BUILDIN_FUNC(getd)
+ }
+ // <--- [zBuffer] List of dynamic var commands
+ 
++BUILDIN_FUNC(callshop)
++{
++    TBL_PC *sd = NULL;
++    struct npc_data *nd;
++    const char *shopname;
++    int flag = 0;
++    sd = script_rid2sd(st);
++    if (!sd)
++    {
++        script_pushint(st, 0);
++        return 0;
++    }
++    shopname = script_getstr(st, 2);
++    if (script_hasdata(st, 3))
++        flag = script_getnum(st, 3);
++    nd = npc_name2id(shopname);
++    if (!nd || nd->bl.type != BL_NPC || nd->bl.subtype != SHOP)
++    {
++        ShowError("buildin_callshop: Shop [%s] not found (or NPC is not shop type)\n", shopname);
++        script_pushint(st, 0);
++        return 1;
++    }
++
++    if (nd->bl.subtype == SHOP)
++    {
++        switch (flag)
++        {
++            case 1:
++                npc_buysellsel(sd, nd->bl.id, 0);
++                break; //Buy window
++            case 2:
++                npc_buysellsel(sd, nd->bl.id,1);
++                break; //Sell window
++            default:
++                clif_npcbuysell(sd, nd->bl.id);
++                break; //Show menu
++        }
++        sd->npc_shopid = nd->bl.id;
++        script_pushint(st, 1);
++    }
++    else
++    {
++        script_pushint(st, 0);
++    }
++
++    return 0;
++}
++
+ //
+ // ��s��main
+ //
+-- 
+2.1.0
+

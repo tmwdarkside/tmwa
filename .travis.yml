@@ -100,3 +100,4 @@ matrix:
 branches:
   except:
     - stable
+    - evol-patches

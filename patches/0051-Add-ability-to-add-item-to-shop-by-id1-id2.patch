@@ -1,0 +1,52 @@
+From 1735dca59b9a0b91f9d299735ef5994ede7ddd23 Mon Sep 17 00:00:00 2001
+From: Andrei Karas <akaras@inbox.ru>
+Date: Sat, 27 Nov 2010 20:00:04 +0200
+Subject: [PATCH 051/226] Add ability to add item to shop by id1-id2
+
+---
+ src/map/npc.c | 23 +++++++++++++++++++++++
+ 1 file changed, 23 insertions(+)
+
+diff --git a/src/map/npc.c b/src/map/npc.c
+index da5bddd..ab6f538 100644
+--- a/src/map/npc.c
++++ b/src/map/npc.c
+@@ -1466,12 +1466,35 @@ static int npc_parse_shop (char *w1, char *w2, char *w3, char *w4)
+     while (p && pos < max)
+     {
+         int  nameid, value;
++        int  nameid2;
+         char name[24];
+         struct item_data *id = NULL;
+         p++;
+         if (sscanf (p, "%d:%d", &nameid, &value) == 2)
+         {
+         }
++        else if (sscanf (p, "%d-%d:%d", &nameid, &nameid2, &value) == 3)
++        {
++            int f;
++            for (f = nameid; f <= nameid2 && pos < max; f ++)
++            {
++                if (itemdb_exists(f))
++                {
++                    nd->u.shop_item[pos].nameid = f;
++                    if (value < 0)
++                    {
++                        if (id == NULL)
++                            id = itemdb_search (f);
++                        if (id)
++                            value = id->value_buy * abs (value);
++                    }
++                    nd->u.shop_item[pos].value = value;
++                    pos++;
++                }
++            }
++            p = strchr (p, ',');
++            continue;
++        }
+         else if (sscanf (p, "%23s :%d", name, &value) == 2)
+         {
+             id = itemdb_searchname (name);
+-- 
+2.1.0
+

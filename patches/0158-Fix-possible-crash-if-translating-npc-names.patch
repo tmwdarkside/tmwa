@@ -1,0 +1,45 @@
+From 79cdf556e5d5490c240dcf39f53b32e348103cfe Mon Sep 17 00:00:00 2001
+From: Andrei Karas <akaras@inbox.ru>
+Date: Fri, 31 Dec 2010 04:27:31 +0200
+Subject: [PATCH 158/226] Fix possible crash if translating npc names.
+
+---
+ src/map/lang.c | 12 ++++++++++--
+ 1 file changed, 10 insertions(+), 2 deletions(-)
+
+diff --git a/src/map/lang.c b/src/map/lang.c
+index 8f78d7b..a15f4a1 100644
+--- a/src/map/lang.c
++++ b/src/map/lang.c
+@@ -74,6 +74,7 @@ static int langsdb_readdb (void)
+     char *idx;
+     int *lng = NULL;
+     int i;
++    int sz;
+     for (i = 0; i < lang_num; i ++)
+     {
+         strcpy (filename, "langs/lang_");
+@@ -117,11 +118,18 @@ static int langsdb_readdb (void)
+                 strings = aCalloc (lang_num, sizeof(int*));
+                 lng = aMalloc (sizeof(int));
+                 *lng = i;
+-                strings[0] = strdup (line1);
++                //strings[0] = strdup (line1);
++                sz = strlen(line1) + 1;
++                strings[0] = aCalloc (sz < 24 ? 24 : sz, sizeof(char));
++                strcpy (strings[0], line1);
+                 strdb_insert (translate_db, strdup (line1), strings);
+             }
+ 
+-            strings[i] = strdup (line2);
++            //strings[i] = strdup (line2);
++            sz = strlen(line2) + 1;
++            strings[i] = aCalloc (sz < 24 ? 24 : sz, sizeof(char));
++            strcpy (strings[i], line2);
++
+             *line1 = 0;
+             *line2 = 0;
+         }
+-- 
+2.1.0
+

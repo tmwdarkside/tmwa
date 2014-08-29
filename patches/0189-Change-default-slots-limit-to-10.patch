@@ -1,0 +1,25 @@
+From 6360f7e7f7756ef97cb8f3d5b7d19c51c303dcf7 Mon Sep 17 00:00:00 2001
+From: Andrei Karas <akaras@inbox.ru>
+Date: Wed, 12 Jan 2011 03:22:44 +0200
+Subject: [PATCH 189/226] Change default slots limit to 10.
+
+---
+ src/char/char.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/src/char/char.c b/src/char/char.c
+index 6fa19c6..7d80037 100644
+--- a/src/char/char.c
++++ b/src/char/char.c
+@@ -78,7 +78,7 @@ int max_hair_color = 9;
+ 
+ int wan_ip = 0;
+ 
+-int char_slots = 9;
++int char_slots = 10;
+ 
+ struct char_session_data
+ {
+-- 
+2.1.0
+

@@ -1,0 +1,25 @@
+From 337321bd0f31dbffb19b1406000d293eeff24a15 Mon Sep 17 00:00:00 2001
+From: Andrei Karas <akaras@inbox.ru>
+Date: Wed, 12 Jan 2011 03:20:23 +0200
+Subject: [PATCH 188/226] Change max slots limit from 9 to 10.
+
+---
+ src/common/mmo.h | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/src/common/mmo.h b/src/common/mmo.h
+index 8e13ed8..145d97a 100644
+--- a/src/common/mmo.h
++++ b/src/common/mmo.h
+@@ -68,7 +68,7 @@
+ #define MAP_NAME_LENGTH 24
+ #define NAME_LENGTH (23 + 1)
+ 
+-#define MAX_SLOTS 9
++#define MAX_SLOTS 10
+ 
+ struct item
+ {
+-- 
+2.1.0
+

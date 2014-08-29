@@ -1,0 +1,115 @@
+From 5ecb0b68bb84e6b202371ac44d08a9bb2945043a Mon Sep 17 00:00:00 2001
+From: Andrei Karas <akaras@inbox.ru>
+Date: Wed, 15 Dec 2010 04:26:25 +0200
+Subject: [PATCH 103/226] Port from eathena script command guildgetexp.
+
+---
+ src/map/guild.c  | 29 +++++++++++++++++++++++++++++
+ src/map/guild.h  |  1 +
+ src/map/script.c | 24 ++++++++++++++++++++++++
+ 3 files changed, 54 insertions(+)
+
+diff --git a/src/map/guild.c b/src/map/guild.c
+index ec5045a..2c462ab 100644
+--- a/src/map/guild.c
++++ b/src/map/guild.c
+@@ -1154,6 +1154,35 @@ int guild_payexp (struct map_session_data *sd, int exp)
+     return exp2;
+ }
+ 
++// Celest
++int guild_getexp (struct map_session_data *sd, int exp)
++{
++    struct guild *g;
++    struct guild_expcache *c;
++    nullpo_retr(0, sd);
++
++    if (sd->status.guild_id == 0 || (g = guild_search(sd->status.guild_id)) == NULL)
++        return 0;
++
++    if ((c = numdb_search (guild_expcache_db, sd->status.account_id /*char_id*/)) == NULL)
++    {
++        c = (struct guild_expcache *) aCalloc (1,
++                                               sizeof (struct
++                                                       guild_expcache));
++        c->guild_id = sd->status.guild_id;
++        c->account_id = sd->status.account_id;
++        c->char_id = 0;
++        c->exp = exp;
++        numdb_insert (guild_expcache_db, c->account_id /*char_id*/, c);
++    }
++    else
++    {
++        c->exp += exp;
++    }
++
++    return exp;
++}
++
+ // ƒXƒLƒ‹ƒ|ƒCƒ“ƒgŠ„‚èU‚è
+ int guild_skillup (struct map_session_data *sd, int skill_num)
+ {
+diff --git a/src/map/guild.h b/src/map/guild.h
+index 6ac13f9..ea30b5c 100644
+--- a/src/map/guild.h
++++ b/src/map/guild.h
+@@ -29,6 +29,7 @@ struct map_session_data *guild_getavailablesd (struct guild *g);
+ int  guild_getindex (struct guild *g, int account_id, int char_id);
+ int  guild_getposition (struct map_session_data *sd, struct guild *g);
+ int  guild_payexp (struct map_session_data *sd, int exp);
++int  guild_getexp (struct map_session_data *sd, int exp);
+ 
+ int  guild_create (struct map_session_data *sd, char *name);
+ int  guild_created (int account_id, int guild_id);
+diff --git a/src/map/script.c b/src/map/script.c
+index 7a647fc..ad918c2 100644
+--- a/src/map/script.c
++++ b/src/map/script.c
+@@ -283,6 +283,7 @@ int  buildin_getopt2 (struct script_state *st);
+ int  buildin_setopt2 (struct script_state *st);
+ int  buildin_checkoption (struct script_state *st);
+ int  buildin_setoption (struct script_state *st);
++int  buildin_guildgetexp (struct script_state *st);
+ int  buildin_setcart (struct script_state *st);
+ int  buildin_checkcart (struct script_state *st);   // check cart [Valaris]
+ int  buildin_setfalcon (struct script_state *st);
+@@ -584,6 +585,8 @@ struct
+     {
+     buildin_setoption, "setoption", "i"},
+     {
++    buildin_guildgetexp, "guildgetexp", "i"},
++    {
+     buildin_setcart, "setcart", ""},
+     {
+     buildin_checkcart, "checkcart", "*"},   //fixed by Lupus (added '*')
+@@ -4296,6 +4299,27 @@ BUILDIN_FUNC(checkcart)
+ }
+ 
+ /*==========================================
++ * Gain guild exp [Celest]
++ *------------------------------------------*/
++BUILDIN_FUNC(guildgetexp)
++{
++    TBL_PC* sd;
++    int exp;
++
++    sd = script_rid2sd(st);
++    if (sd == NULL)
++        return 0;
++
++    exp = script_getnum(st, 2);
++    if (exp < 0)
++        return 0;
++    if(sd && sd->status.guild_id > 0)
++        guild_getexp (sd, exp);
++
++    return 0;
++}
++
++/*==========================================
+  * ï¿½Jï¿½[ï¿½gï¿½ï¿½ï¿½tï¿½ï¿½ï¿½ï¿½
+  *------------------------------------------
+  */
+-- 
+2.1.0
+

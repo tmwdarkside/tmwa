@@ -1,0 +1,51 @@
+From 205a41a26b7562fa0eddcf05d28ed5d05357329a Mon Sep 17 00:00:00 2001
+From: Andrei Karas <akaras@inbox.ru>
+Date: Fri, 31 Dec 2010 20:12:56 +0200
+Subject: [PATCH 160/226] Fix char server issue, and remove from console each
+ connection info.
+
+---
+ src/char/char.c     | 4 +---
+ src/common/socket.c | 4 ++--
+ 2 files changed, 3 insertions(+), 5 deletions(-)
+
+diff --git a/src/char/char.c b/src/char/char.c
+index 025eb7f..7673f26 100644
+--- a/src/char/char.c
++++ b/src/char/char.c
+@@ -3103,8 +3103,6 @@ int parse_char (int fd)
+ 
+     sd = session[fd]->session_data;
+ 
+-    //+++ need check for sd == 0?
+-
+     while (RFIFOREST (fd) >= 2)
+     {
+ //      if (RFIFOW(fd,0) < 30000)
+@@ -3119,7 +3117,7 @@ int parse_char (int fd)
+                 break;
+ 
+             case 0x61:         // change password request
+-                if (RFIFOREST (fd) < 50)
++                if (RFIFOREST (fd) < 50 || !sd)
+                     return 0;
+                 {
+                     WFIFOW (login_fd, 0) = 0x2740;
+diff --git a/src/common/socket.c b/src/common/socket.c
+index 8307a50..9223bbb 100644
+--- a/src/common/socket.c
++++ b/src/common/socket.c
+@@ -164,8 +164,8 @@ static int connect_client (int listen_fd)
+ 
+     //printf("connect_client : %d\n",listen_fd);
+ 
+-    printf ("used: %d, max FDs: %d, SOFT: %d\n", currentuse, FD_SETSIZE,
+-            SOFT_LIMIT);
++//    printf ("used: %d, max FDs: %d, SOFT: %d\n", currentuse, FD_SETSIZE,
++//            SOFT_LIMIT);
+ 
+     len = sizeof (client_address);
+ 
+-- 
+2.1.0
+

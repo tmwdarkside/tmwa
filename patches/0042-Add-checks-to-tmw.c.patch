@@ -1,0 +1,35 @@
+From 77c24deb1d7fa72337da89fbc9ed88fbcbbde155 Mon Sep 17 00:00:00 2001
+From: Andrei Karas <akaras@inbox.ru>
+Date: Wed, 24 Nov 2010 03:26:49 +0200
+Subject: [PATCH 042/226] Add checks to tmw.c
+
+---
+ src/map/tmw.c | 5 +++++
+ 1 file changed, 5 insertions(+)
+
+diff --git a/src/map/tmw.c b/src/map/tmw.c
+index c23be15..d159464 100644
+--- a/src/map/tmw.c
++++ b/src/map/tmw.c
+@@ -34,6 +34,8 @@
+ int tmw_CheckChatSpam (struct map_session_data *sd, char *message)
+ {
+     nullpo_retr (1, sd);
++    nullpo_retr (1, message);
++
+     time_t now = time (NULL);
+ 
+     if (pc_isGM (sd))
+@@ -98,6 +100,9 @@ int tmw_CheckChatSpam (struct map_session_data *sd, char *message)
+ 
+ void tmw_AutoBan(struct map_session_data *sd, char *reason, int length)
+ {
++    nullpo_retv (sd);
++    nullpo_retv (reason);
++
+     char anotherbuf[512];
+ 
+     if (length == 0 || sd->auto_ban_info.in_progress)
+-- 
+2.1.0
+

@@ -1,0 +1,67 @@
+From c77279c6c8679cce8ea71eb4ad9cad3fe7f09fdc Mon Sep 17 00:00:00 2001
+From: Andrei Karas <akaras@inbox.ru>
+Date: Mon, 20 Dec 2010 18:51:06 +0200
+Subject: [PATCH 125/226] Add @runscript gm command to run any script code.
+
+---
+ src/map/atcommand.c | 20 ++++++++++++++++++++
+ src/map/atcommand.h |  1 +
+ 2 files changed, 21 insertions(+)
+
+diff --git a/src/map/atcommand.c b/src/map/atcommand.c
+index bc9b97b..236d420 100644
+--- a/src/map/atcommand.c
++++ b/src/map/atcommand.c
+@@ -214,6 +214,7 @@ ATCOMMAND_FUNC (ipcheck);
+ ATCOMMAND_FUNC (checkmobstatus);
+ ATCOMMAND_FUNC (setmapflag);
+ ATCOMMAND_FUNC (warpmob);
++ATCOMMAND_FUNC (runscript);    // [4144]
+ 
+ /*==========================================
+  *AtCommandInfo atcommand_info[]ç\ë¢ëÃÇÃíËã`
+@@ -416,6 +417,7 @@ static AtCommandInfo atcommand_info[] = {
+     {AtCommand_SetMapFlag, "@setmapflag", 60, atcommand_setmapflag},
+     {AtCommand_WarpMob, "@warpmob", 60, atcommand_warpmob},
+     {AtCommand_IpCheck, "@ipcheck", 60, atcommand_ipcheck},
++    {AtCommand_RunScript, "@runscript", 99, atcommand_runscript},  // [4144]
+ 
+ // add new commands before this line
+     {AtCommand_Unknown, NULL, 1, NULL}
+@@ -9538,3 +9540,21 @@ int atcommand_ipcheck (const int fd, struct map_session_data *sd,
+     clif_displaymessage (fd, "End of list");
+     return 0;
+ }
++
++int atcommand_runscript (const int fd, struct map_session_data *sd,
++                   const char *command, const char *message)
++{
++    if (!fd || !sd || !command)
++        return -1;
++
++    if (!message)
++    {
++        clif_displaymessage (fd, "Usage: @runscript { <script code> }");
++        return -1;
++    }
++
++    char *script = parse_script((unsigned char*)message, 1);
++    run_script (script, 0, sd->bl.id, 0);
++    free (script);
++    return 0;
++}
+diff --git a/src/map/atcommand.h b/src/map/atcommand.h
+index cb01722..17743c7 100644
+--- a/src/map/atcommand.h
++++ b/src/map/atcommand.h
+@@ -189,6 +189,7 @@ enum AtCommandType
+     AtCommand_Checkmobstatus, // [var]
+     AtCommand_SetMapFlag, // [var]
+     AtCommand_WarpMob, // [var]
++    AtCommand_RunScript, // [4144]
+     // end
+     AtCommand_Unknown,
+     AtCommand_MAX
+-- 
+2.1.0
+

@@ -1,0 +1,29 @@
+From 5556d0dfe2d73264bfba3b3a68efd92db681a344 Mon Sep 17 00:00:00 2001
+From: Andrei Karas <akaras@inbox.ru>
+Date: Fri, 7 Jan 2011 23:04:39 +0200
+Subject: [PATCH 175/226] Replace in char server in debug messages %d to %u.
+
+---
+ src/char/char.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/src/char/char.c b/src/char/char.c
+index 59f90c9..48832a1 100644
+--- a/src/char/char.c
++++ b/src/char/char.c
+@@ -3138,10 +3138,10 @@ int parse_char (int fd)
+                     int  GM_value;
+                     if ((GM_value = isGM (RFIFOL (fd, 2))))
+                         printf
+-                            ("Account Logged On; Account ID: %d (GM level %d).\n",
++                            ("Account Logged On; Account ID: %u (GM level %u).\n",
+                              RFIFOL (fd, 2), GM_value);
+                     else
+-                        printf ("Account Logged On; Account ID: %d.\n",
++                        printf ("Account Logged On; Account ID: %u.\n",
+                                 RFIFOL (fd, 2));
+                     if (sd == NULL)
+                     {
+-- 
+2.1.0
+

@@ -1,0 +1,55 @@
+From 782bfe4d44d9f41e7007a3926176d679be27125f Mon Sep 17 00:00:00 2001
+From: Andrei Karas <akaras@inbox.ru>
+Date: Thu, 3 Feb 2011 16:16:13 +0200
+Subject: [PATCH 218/226] Add script command getclientversion.
+
+---
+ src/map/script.c | 18 ++++++++++++++++++
+ 1 file changed, 18 insertions(+)
+
+diff --git a/src/map/script.c b/src/map/script.c
+index 5fe9990..7ac2811 100644
+--- a/src/map/script.c
++++ b/src/map/script.c
+@@ -465,6 +465,7 @@ int  buildin_geta (struct script_state *st); // [4144]
+ int  buildin_seta (struct script_state *st); // [4144]
+ int  buildin_geta2 (struct script_state *st); // [4144]
+ int  buildin_seta2 (struct script_state *st); // [4144]
++int  buildin_getclientversion (struct script_state *st); // [4144]
+ 
+ void push_val (struct script_stack *stack, int type, int val);
+ int  run_func (struct script_state *st);
+@@ -988,6 +989,8 @@ struct
+     {
+     buildin_seta2, "seta2", "sii"}, // [4144]
+     {
++    buildin_getclientversion, "getclientversion", "*"}, // [4144]
++    {
+ NULL, NULL, NULL},};
+ 
+ //int  buildin_message (struct script_state *st); // [MouseJstr]
+@@ -9258,6 +9261,21 @@ BUILDIN_FUNC(geta2)
+     return 0;
+ }
+ 
++BUILDIN_FUNC(getclientversion)
++{
++    TBL_PC *sd = NULL;
++
++    sd = script_rid2sd(st);
++    if (sd == NULL)
++    {
++        script_pushint(st, 0);
++        return 0;
++    }
++
++    script_pushint(st, sd->tmw_version);
++    return 0;
++}
++
+ //
+ // 実行部main 
+ //
+-- 
+2.1.0
+

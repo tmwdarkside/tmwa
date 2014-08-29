@@ -1,0 +1,35 @@
+From 144b177a1e88106daeb43a6ef0764b333d6c2033 Mon Sep 17 00:00:00 2001
+From: Andrei Karas <akaras@inbox.ru>
+Date: Sun, 23 Jan 2011 02:28:01 +0200
+Subject: [PATCH 203/226] Add missing profiling files.
+
+---
+ makegprofchar | 4 ++++
+ makegprofmap  | 4 ++++
+ 2 files changed, 8 insertions(+)
+ create mode 100755 makegprofchar
+ create mode 100755 makegprofmap
+
+diff --git a/makegprofchar b/makegprofchar
+new file mode 100755
+index 0000000..b865312
+--- /dev/null
++++ b/makegprofchar
+@@ -0,0 +1,4 @@
++#!/bin/sh
++
++gprof char-server >gprof.txt
++cat gprof.txt | tools/gprof2dot.py | dot -Tpng -o gprof.png
+diff --git a/makegprofmap b/makegprofmap
+new file mode 100755
+index 0000000..b09cf1f
+--- /dev/null
++++ b/makegprofmap
+@@ -0,0 +1,4 @@
++#!/bin/sh
++
++gprof map-server >gprof.txt
++cat gprof.txt | tools/gprof2dot.py | dot -Tpng -o gprof.png
+-- 
+2.1.0
+

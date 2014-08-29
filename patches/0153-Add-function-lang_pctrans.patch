@@ -1,0 +1,73 @@
+From 8c014000e0a16a598330b1ac5d6c656d304e9217 Mon Sep 17 00:00:00 2001
+From: Andrei Karas <akaras@inbox.ru>
+Date: Tue, 28 Dec 2010 04:46:34 +0200
+Subject: [PATCH 153/226] Add function lang_pctrans.
+
+---
+ src/map/lang.c   | 10 ++++++++++
+ src/map/lang.h   |  3 +++
+ src/map/script.c |  9 ++-------
+ 3 files changed, 15 insertions(+), 7 deletions(-)
+
+diff --git a/src/map/lang.c b/src/map/lang.c
+index 06dadfe..8f78d7b 100644
+--- a/src/map/lang.c
++++ b/src/map/lang.c
+@@ -153,3 +153,13 @@ const char* lang_trans(const char *str, int lng)
+ 
+     return strings[lng];
+ }
++
++const char* lang_pctrans(const char *str, TBL_PC *sd)
++{
++    int lng = 0;
++
++    if (sd)
++        lng = sd->status.language;
++
++    return lang_trans(str, lng);
++}
+\ No newline at end of file
+diff --git a/src/map/lang.h b/src/map/lang.h
+index 2c1c2af..14fd877 100644
+--- a/src/map/lang.h
++++ b/src/map/lang.h
+@@ -8,6 +8,7 @@
+ #include <sys/time.h>
+ #include <netinet/in.h>
+ #include "mmo.h"
++#include "map.h"
+ 
+ extern struct dbt *translate_db;
+ 
+@@ -15,4 +16,6 @@ void do_init_langs ();
+ 
+ const char* lang_trans(const char *str, int lng);
+ 
++const char* lang_pctrans(const char *str, TBL_PC *sd);
++
+ #endif
+diff --git a/src/map/script.c b/src/map/script.c
+index 7178bdf..17ebe11 100644
+--- a/src/map/script.c
++++ b/src/map/script.c
+@@ -8803,14 +8803,9 @@ BUILDIN_FUNC(getnpcclass)
+ BUILDIN_FUNC(l)
+ {
+     char *str = script_getstr(st, 2);
+-    TBL_PC *sd;
+-    int lng = 0;
+-
+-    sd = script_rid2sd(st);
+-    if (sd)
+-        lng = sd->status.language;
++    TBL_PC *sd = script_rid2sd(st);
+ 
+-    script_pushstr(st, (unsigned char *)strdup(lang_trans (str, lng)));
++    script_pushstr(st, (unsigned char *)strdup(lang_pctrans (str, sd)));
+     return 0;
+ }
+ 
+-- 
+2.1.0
+

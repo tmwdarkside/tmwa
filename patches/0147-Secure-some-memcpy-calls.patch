@@ -1,0 +1,123 @@
+From a0c313d85f92e9a8fbbed1f731fac90b5dbb4fd9 Mon Sep 17 00:00:00 2001
+From: Andrei Karas <akaras@inbox.ru>
+Date: Mon, 27 Dec 2010 00:17:07 +0200
+Subject: [PATCH 147/226] Secure some memcpy calls.
+
+---
+ src/char/int_party.c | 4 ++++
+ src/map/clif.c       | 2 ++
+ src/map/npc.c        | 7 ++++---
+ src/map/party.c      | 1 +
+ src/map/pc.c         | 2 +-
+ src/map/script.c     | 1 +
+ 6 files changed, 13 insertions(+), 4 deletions(-)
+
+diff --git a/src/char/int_party.c b/src/char/int_party.c
+index 14abb3f..5d1e5ab 100644
+--- a/src/char/int_party.c
++++ b/src/char/int_party.c
+@@ -439,6 +439,7 @@ int mapif_party_membermoved (struct party *p, int idx)
+     WBUFL (buf, 2) = p->party_id;
+     WBUFL (buf, 6) = p->member[idx].account_id;
+     memcpy (WBUFP (buf, 10), p->member[idx].map, 16);
++    (WBUFP (buf, 10))[15] = 0;
+     WBUFB (buf, 26) = p->member[idx].online;
+     WBUFW (buf, 27) = p->member[idx].lv;
+     mapif_sendall (buf, 29);
+@@ -521,6 +522,7 @@ int mapif_parse_CreateParty (int fd, int account_id, char *name, char *nick,
+     p->member[0].account_id = account_id;
+     memcpy (p->member[0].name, nick, 24);
+     memcpy (p->member[0].map, map, 16);
++    p->member[0].map[15] = 0;
+     p->member[0].leader = 1;
+     p->member[0].online = 1;
+     p->member[0].lv = lv;
+@@ -573,6 +575,7 @@ int mapif_parse_PartyAddMember (int fd, int party_id, int account_id,
+             p->member[i].account_id = account_id;
+             memcpy (p->member[i].name, nick, 24);
+             memcpy (p->member[i].map, map, 16);
++            p->member[i].map[15] = 0;
+             p->member[i].leader = 0;
+             p->member[i].online = 1;
+             p->member[i].lv = lv;
+@@ -665,6 +668,7 @@ int mapif_parse_PartyChangeMap (int fd, int party_id, int account_id,
+             int  flag = 0;
+ 
+             memcpy (p->member[i].map, map, 16);
++            p->member[i].map[15] = 0;
+             p->member[i].online = online;
+             p->member[i].lv = lv;
+             mapif_party_membermoved (p, i);
+diff --git a/src/map/clif.c b/src/map/clif.c
+index a125071..0fb3b63 100644
+--- a/src/map/clif.c
++++ b/src/map/clif.c
+@@ -3190,6 +3190,8 @@ int clif_joinchatok (struct map_session_data *sd, struct chat_data *cd)
+     WFIFOL (fd, 4) = cd->bl.id;
+     for (i = 0; i < cd->users; i++)
+     {
++        if (!cd->usersd[i])
++            return 0;
+         WFIFOL (fd, 8 + i * 28) = (i != 0) || ((*cd->owner)->type == BL_NPC);
+         memcpy (WFIFOP (fd, 8 + i * 28 + 4), cd->usersd[i]->status.name, 24);
+     }
+diff --git a/src/map/npc.c b/src/map/npc.c
+index f238560..a589c40 100644
+--- a/src/map/npc.c
++++ b/src/map/npc.c
+@@ -936,11 +936,12 @@ int npc_touch_areanpc (struct map_session_data *sd, int m, int x, int y)
+         case MESSAGE:
+         case SCRIPT:
+         {
+-            char *name = (char *) aCalloc (50, sizeof (char));
+-
+-            memcpy (name, map[m].npc[i]->name, 50);
+             if (sd->areanpc_id == map[m].npc[i]->bl.id)
+                 return 1;
++
++            char *name = (char *) aCalloc (50, sizeof (char));
++            memcpy (name, map[m].npc[i]->name, 24);
++
+             sd->areanpc_id = map[m].npc[i]->bl.id;
+             if (npc_event (sd, strcat (name, "::OnTouch"), 0) > 0)
+                 npc_click (sd, map[m].npc[i]->bl.id, 0);
+diff --git a/src/map/party.c b/src/map/party.c
+index a7bb3a9..2e00cf7 100644
+--- a/src/map/party.c
++++ b/src/map/party.c
+@@ -545,6 +545,7 @@ int party_recv_movemap (int party_id, int account_id, char *map, int online,
+         if (m->account_id == account_id)
+         {
+             memcpy (m->map, map, 16);
++            m->map[15] = 0;
+             m->online = online;
+             m->lv = lv;
+             break;
+diff --git a/src/map/pc.c b/src/map/pc.c
+index 6c6545f..6717e78 100644
+--- a/src/map/pc.c
++++ b/src/map/pc.c
+@@ -4523,7 +4523,7 @@ int pc_setpos (struct map_session_data *sd, char *mapname_org, int x, int y,
+         sd->disguise = 0;
+     }
+ 
+-    memcpy (mapname, mapname_org, 24);
++    memcpy (mapname, mapname_org, 16);
+     mapname[16] = 0;
+     if (strstr (mapname, ".gat") == NULL && strlen (mapname) < 16)
+     {
+diff --git a/src/map/script.c b/src/map/script.c
+index 33a6bd4..c759126 100644
+--- a/src/map/script.c
++++ b/src/map/script.c
+@@ -6003,6 +6003,7 @@ BUILDIN_FUNC(setmapflagnosave)
+     {
+         map[m].flag.nosave = 1;
+         memcpy (map[m].save.map, str2, 16);
++        map[m].save.map[15] = 0;
+         map[m].save.x = x;
+         map[m].save.y = y;
+     }
+-- 
+2.1.0
+

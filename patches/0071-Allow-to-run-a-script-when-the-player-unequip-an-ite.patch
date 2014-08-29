@@ -1,0 +1,145 @@
+From d86d8f24cdcb3a95877da5666ae0fecd8778572a Mon Sep 17 00:00:00 2001
+From: var <simone.m@gmx.com>
+Date: Thu, 2 Dec 2010 22:54:41 +0200
+Subject: [PATCH 071/226] Allow to run a script when the player unequip an
+ item.
+
+Small corrections for evol.
+---
+ src/map/itemdb.c | 64 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ src/map/itemdb.h |  1 +
+ src/map/pc.c     | 12 ++++++++++-
+ 3 files changed, 76 insertions(+), 1 deletion(-)
+
+diff --git a/src/map/itemdb.c b/src/map/itemdb.c
+index cbad7b3..5b77b83 100644
+--- a/src/map/itemdb.c
++++ b/src/map/itemdb.c
+@@ -411,6 +411,7 @@ static int itemdb_readdb (void)
+ 
+             id->use_script = NULL;
+             id->equip_script = NULL;
++            id->unequip_script = NULL;
+ 
+             if ((p = strchr (np, '{')) == NULL)
+                 continue;
+@@ -426,6 +427,68 @@ static int itemdb_readdb (void)
+     return 0;
+ }
+ 
++//itemdb_unequip
++static int itemdb_read_unequip (void)
++{
++    FILE *fp;
++    char line[2024];
++    int  ln = 0, lines = 0;
++    int  nameid;
++    char *str[32], *p, *np;
++    struct item_data *id;
++    char filename[] = "db/item_unequip.txt";
++
++    fp = fopen_ (filename, "r");
++    if (fp == NULL)
++    {
++        printf ("can't read %s\n", filename);
++        return -11;
++    }
++
++    lines = 0;
++    while (fgets (line, 2020, fp))
++    {
++        lines++;
++        if (line[0] == '/' && line[1] == '/')
++            continue;
++        memset (str, 0, sizeof (str));
++        np = p = line;
++        while (*p == '\t' || *p == ' ')
++            p++;
++        str[0] = p;
++        p = strchr (p, ',');
++        if (p)
++        {
++            *p++ = 0;
++            np = p;
++        }
++
++        if (str[0] == NULL)
++            continue;
++
++        nameid = atoi (str[0]);
++        if (nameid <= 0 || nameid >= 20000)
++            continue;
++        ln++;
++
++        //ID,script
++        id = itemdb_search (nameid);
++        if (id)
++        {
++            id->unequip_script = NULL;
++
++            if ((p = strchr (np, '{')) == NULL)
++                continue;
++
++            id->unequip_script = parse_script (p, lines);
++        }
++    }
++    fclose_ (fp);
++    printf ("read %s done (count=%d)\n", filename, ln);
++
++    return 0;
++}
++
+ // Removed item_value_db, don't re-add!
+ 
+ /*==========================================
+@@ -772,6 +835,7 @@ static void itemdb_read (void)
+ {
+     itemdb_read_itemslottable ();
+     itemdb_readdb ();
++    itemdb_read_unequip ();
+     itemdb_read_randomitem ();
+     itemdb_read_itemavail ();
+     itemdb_read_noequip ();
+diff --git a/src/map/itemdb.h b/src/map/itemdb.h
+index de07822..ac0b7a3 100644
+--- a/src/map/itemdb.h
++++ b/src/map/itemdb.h
+@@ -27,6 +27,7 @@ struct item_data
+     int  refine;
+     char *use_script;
+     char *equip_script;
++    char *unequip_script;
+     struct
+     {
+         unsigned available:1;
+diff --git a/src/map/pc.c b/src/map/pc.c
+index 9f96bc6..d218ba9 100644
+--- a/src/map/pc.c
++++ b/src/map/pc.c
+@@ -7750,12 +7750,22 @@ int pc_unequipitem (struct map_session_data *sd, int n, int type)
+         if (!type)
+             pc_checkallowskill (sd);
+         if (sd->weapontype1 == 0 && sd->weapontype2 == 0)
+-            skill_encchant_eremental_end (&sd->bl, -1); //���펝�������͖���ő����t�^����
++            skill_encchant_eremental_end (&sd->bl, -1);
+     }
+     else
+     {
+         clif_unequipitemack (sd, n, 0, 0);
+     }
++    if(sd->inventory_data[n] && sd->inventory_data[n]->unequip_script)
++    {
++        argrec_t arg[2];
++        arg[0].name = "@slotId";
++        arg[0].v.i = 0;
++        arg[1].name = "@itemId";
++        arg[1].v.i = sd->inventory_data[n]->nameid;
++        run_script_l (sd->inventory_data[n]->unequip_script, 0, sd->bl.id, 0, 2, arg);
++    }
++
+     if (!type)
+     {
+         pc_calcstatus (sd, 0);
+-- 
+2.1.0
+

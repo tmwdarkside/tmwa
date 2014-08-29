@@ -1,0 +1,25 @@
+From 8d1c7f125b427a08f241c1174efe71cfa1bdf400 Mon Sep 17 00:00:00 2001
+From: Ben Longbons <b.r.longbons@gmail.com>
+Date: Wed, 6 Apr 2011 15:00:15 -0700
+Subject: [PATCH 001/226] Fix bug in ignore list.
+
+---
+ .gitignore | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/.gitignore b/.gitignore
+index 70363ce..b5399e3 100644
+--- a/.gitignore
++++ b/.gitignore
+@@ -1,7 +1,7 @@
+ # files generated during make
+ *.o
+ char-server
+-ladmin
++/ladmin
+ login-server
+ map-server
+ GNUmakefile
+-- 
+2.1.0
+

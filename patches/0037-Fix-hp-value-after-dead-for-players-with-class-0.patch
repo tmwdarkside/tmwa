@@ -1,0 +1,25 @@
+From b11187f146c22b8323d1f815662c113bf21244d4 Mon Sep 17 00:00:00 2001
+From: Andrei Karas <akaras@inbox.ru>
+Date: Tue, 23 Nov 2010 22:11:53 +0200
+Subject: [PATCH 037/226] Fix hp value after dead for players with class > 0
+
+---
+ src/map/pc.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/src/map/pc.c b/src/map/pc.c
+index bd53aaf..504c952 100644
+--- a/src/map/pc.c
++++ b/src/map/pc.c
+@@ -348,7 +348,7 @@ int pc_setrestartvalue (struct map_session_data *sd, int type)
+     }
+     else
+     {
+-        if (s_class.job == 0 && battle_config.restart_hp_rate < 50)
++        if (s_class.job <= 5 && battle_config.restart_hp_rate < 50)
+         {                       //�m�r�͔�������
+             sd->status.hp = (sd->status.max_hp) / 2;
+         }
+-- 
+2.1.0
+

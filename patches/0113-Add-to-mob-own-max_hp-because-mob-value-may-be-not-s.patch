@@ -1,0 +1,61 @@
+From bd46ca8ae6238d023b045caea39b4efa327ceb32 Mon Sep 17 00:00:00 2001
+From: Andrei Karas <akaras@inbox.ru>
+Date: Sat, 18 Dec 2010 00:41:45 +0200
+Subject: [PATCH 113/226] Add to mob own max_hp, because mob value may be not
+ same as in mob_db.
+
+---
+ src/map/clif.c | 4 ++--
+ src/map/map.h  | 1 +
+ src/map/mob.c  | 1 +
+ 3 files changed, 4 insertions(+), 2 deletions(-)
+
+diff --git a/src/map/clif.c b/src/map/clif.c
+index 66f3f88..5c2d065 100644
+--- a/src/map/clif.c
++++ b/src/map/clif.c
+@@ -1122,7 +1122,7 @@ static int clif_mob0078 (struct mob_data *md, unsigned char *buf)
+     }                           // End addition
+ 
+     WBUFL (buf, 32) = md->hp;
+-    WBUFL (buf, 36) = mob_db[md->class].max_hp;
++    WBUFL (buf, 36) = md->max_hp;
+ 
+     WBUFPOS (buf, 46, md->bl.x, md->bl.y);
+     WBUFB (buf, 48) |= md->dir & 0x0f;
+@@ -1192,7 +1192,7 @@ static int clif_mob007b (struct mob_data *md, unsigned char *buf)
+ 
+ 
+     WBUFL (buf, 36) = md->hp;
+-    WBUFL (buf, 40) = mob_db[md->class].max_hp;
++    WBUFL (buf, 40) = md->max_hp;
+ 
+     WBUFPOS2 (buf, 50, md->bl.x, md->bl.y, md->to_x, md->to_y);
+     WBUFB (buf, 56) = 5;
+diff --git a/src/map/map.h b/src/map/map.h
+index fa7e652..83ae696 100644
+--- a/src/map/map.h
++++ b/src/map/map.h
+@@ -505,6 +505,7 @@ struct mob_data
+     int  timer;
+     short to_x, to_y;
+     int  hp;
++    int  max_hp;
+     int  target_id, attacked_id;
+     short target_lv;
+     struct walkpath_data walkpath;
+diff --git a/src/map/mob.c b/src/map/mob.c
+index 3cd9ae6..323dd54 100644
+--- a/src/map/mob.c
++++ b/src/map/mob.c
+@@ -1395,6 +1395,7 @@ int mob_spawn (int id)
+         mob_makedummymobdb (md->class);
+         md->hp = battle_get_max_hp (&md->bl);
+     }
++    md->max_hp = md->hp;
+ 
+     clif_spawnmob (md);
+ 
+-- 
+2.1.0
+

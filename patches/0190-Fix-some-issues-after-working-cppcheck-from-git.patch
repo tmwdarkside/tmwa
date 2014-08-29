@@ -1,0 +1,157 @@
+From 30beb17cbf1a4c08393d6f861c748edb3254eb62 Mon Sep 17 00:00:00 2001
+From: Andrei Karas <akaras@inbox.ru>
+Date: Sat, 15 Jan 2011 04:46:06 +0200
+Subject: [PATCH 190/226] Fix some issues after working cppcheck from git.
+
+---
+ src/char/char.c      |  3 ++-
+ src/char/int_guild.c |  6 +++---
+ src/common/grfio.c   | 11 ++++++++++-
+ src/common/malloc.c  |  3 +--
+ src/map/guild.c      |  3 +--
+ src/map/script.c     |  4 ++--
+ 6 files changed, 19 insertions(+), 11 deletions(-)
+
+diff --git a/src/char/char.c b/src/char/char.c
+index 7d80037..cd1cd00 100644
+--- a/src/char/char.c
++++ b/src/char/char.c
+@@ -1339,7 +1339,7 @@ char *job_name (int class)
+ //-------------------------------------------------------------
+ void create_online_files (void)
+ {
+-    int  i, j, k, l;            // for loops
++    int  i, j, k;            // for loops
+     int  players;               // count the number of players
+     FILE *fp;                   // for the txt file
+     FILE *fp2;                  // for the html file
+@@ -1544,6 +1544,7 @@ void create_online_files (void)
+                     fprintf (fp, "-");
+                 fprintf (fp, "\n");
+ 
++                int l;
+                 // display each player.
+                 for (i = 0; i < players; i++)
+                 {
+diff --git a/src/char/int_guild.c b/src/char/int_guild.c
+index 0296f54..b26ac38 100644
+--- a/src/char/int_guild.c
++++ b/src/char/int_guild.c
+@@ -759,11 +759,11 @@ int guild_checkskill (struct guild *g, int id)
+ int guild_calcinfo (struct guild *g)
+ {
+     int  i, c, nextexp;
+-    struct guild before = *g;
+-
+     if (!g)
+         return 0;
+ 
++    struct guild before = *g;
++
+     // ƒXƒLƒ‹ID‚ÌÝ’è
+     for (i = 0; i < 5; i++)
+         g->skill[i].id = i + 10000;
+@@ -1843,7 +1843,7 @@ int mapif_parse_GuildCheck (int fd __attribute__ ((unused)), int guild_id,
+ 
+ int mapif_parse_GuildMasterChange(int fd __attribute__ ((unused)), int guild_id, const char* name, int len)
+ {
+-    struct guild *g = g = numdb_search (guild_db, guild_id);;
++    struct guild *g = numdb_search (guild_db, guild_id);;
+     struct guild_member gm;
+     int pos;
+ 
+diff --git a/src/common/grfio.c b/src/common/grfio.c
+index 8adb145..17cdc85 100644
+--- a/src/common/grfio.c
++++ b/src/common/grfio.c
+@@ -830,7 +830,11 @@ static int grfio_entryread (char *gfname, int gentry)
+             return 3;           // 3:memory alloc error
+         }
+         if (!fread (grf_filelist, 1, list_size, fp))
++        {
++            free (grf_filelist);
++            fclose_ (fp);
+             return 2;
++        }
+         fclose_ (fp);
+ 
+         entrys =
+@@ -858,7 +862,7 @@ static int grfio_entryread (char *gfname, int gentry)
+                     exit (1);
+                 }
+                 srclen = 0;
+-                if ((period_ptr = rindex (fname, '.')) != NULL)
++                if ((period_ptr = strrchr (fname, '.')) != NULL)
+                 {
+                     for (lop = 0; lop < 4; lop++)
+                     {
+@@ -941,7 +945,12 @@ static int grfio_entryread (char *gfname, int gentry)
+         }
+ 
+         if (!fread (rBuf, 1, rSize, fp))
++        {
++            free (grf_filelist);
++            free (rBuf);
++            fclose_ (fp);
+             return 4;
++        }
+ 
+         fclose_ (fp);
+         decode_zip (grf_filelist, &eSize, rBuf, rSize); // Decode function
+diff --git a/src/common/malloc.c b/src/common/malloc.c
+index 01757d6..a847276 100644
+--- a/src/common/malloc.c
++++ b/src/common/malloc.c
+@@ -75,8 +75,7 @@ char *aStrdup_ (const char *p, const char *file, int line, const char *func)
+ void aFree_(void *p, const char *file __attribute__ ((unused)), int line __attribute__ ((unused)), const char *func __attribute__ ((unused)))
+ {
+     // ShowMessage("%s:%d: in func %s: aFree %p\n",file,line,func,p);
+-    if (p)
+-        FREE(p, file, line, func);
++    FREE(p, file, line, func);
+ 
+     p = NULL;
+ }
+\ No newline at end of file
+diff --git a/src/map/guild.c b/src/map/guild.c
+index 59f01f7..24ec3cf 100644
+--- a/src/map/guild.c
++++ b/src/map/guild.c
+@@ -1157,11 +1157,10 @@ int guild_payexp (struct map_session_data *sd, int exp)
+ // Celest
+ int guild_getexp (struct map_session_data *sd, int exp)
+ {
+-    struct guild *g;
+     struct guild_expcache *c;
+     nullpo_retr(0, sd);
+ 
+-    if (sd->status.guild_id == 0 || (g = guild_search(sd->status.guild_id)) == NULL)
++    if (sd->status.guild_id == 0 || guild_search(sd->status.guild_id) == NULL)
+         return 0;
+ 
+     if ((c = numdb_search (guild_expcache_db, sd->status.account_id /*char_id*/)) == NULL)
+diff --git a/src/map/script.c b/src/map/script.c
+index d950d6b..7475bf6 100644
+--- a/src/map/script.c
++++ b/src/map/script.c
+@@ -4523,7 +4523,7 @@ BUILDIN_FUNCU(logmes)
+ BUILDIN_FUNC(summon)
+ {
+     int _class, timeout = 0;
+-    const char *str, *event = "";
++    const char *event = "";
+     TBL_PC *sd;
+     struct mob_data *md;
+     int tick = gettick();
+@@ -4531,7 +4531,7 @@ BUILDIN_FUNC(summon)
+     sd = script_rid2sd(st);
+     if (!sd)
+         return 0;
+-    str = script_getstr(st, 2);
++//    str = script_getstr(st, 2);
+     _class = script_getnum(st, 3);
+     if (script_hasdata(st, 4))
+         timeout = script_getnum(st, 4);
+-- 
+2.1.0
+

@@ -1,0 +1,45 @@
+From 755278af54c42856420a902f37d57519d4f2b865 Mon Sep 17 00:00:00 2001
+From: Andrei Karas <akaras@inbox.ru>
+Date: Mon, 31 Jan 2011 01:40:43 +0200
+Subject: [PATCH 209/226] Add basic sctipt commands documentation.
+
+---
+ doc/scripts.txt | 26 ++++++++++++++++++++++++++
+ 1 file changed, 26 insertions(+)
+ create mode 100644 doc/scripts.txt
+
+diff --git a/doc/scripts.txt b/doc/scripts.txt
+new file mode 100644
+index 0000000..b3589ef
+--- /dev/null
++++ b/doc/scripts.txt
+@@ -0,0 +1,26 @@
++
++todo add script functions
++
++geta (variable, index)
++    get bit at given index.
++
++    each value can be 0 - 1
++
++
++seta variable, index, value
++    set bit at given index
++
++    each value can be 0 - 1
++
++
++geta2 (variable, index)
++    get two bits at given index
++
++    each value can be 0 - 3
++
++
++seta2 variable, index, value
++    set two bit at given index
++
++    each value can be 0 - 3
++
+-- 
+2.1.0
+

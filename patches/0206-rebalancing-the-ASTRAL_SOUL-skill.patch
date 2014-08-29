@@ -1,0 +1,32 @@
+From 3319d3dd5038c3fa2f0c49f16c0f415dfc0b6421 Mon Sep 17 00:00:00 2001
+From: Stefan Beller <stefanbeller@googlemail.com>
+Date: Tue, 18 Jan 2011 23:16:25 +0100
+Subject: [PATCH 206/226] rebalancing the ASTRAL_SOUL skill
+
+reviewed by fate
+---
+ src/map/pc.c | 8 +++-----
+ 1 file changed, 3 insertions(+), 5 deletions(-)
+
+diff --git a/src/map/pc.c b/src/map/pc.c
+index 01aa538..f4bb09e 100644
+--- a/src/map/pc.c
++++ b/src/map/pc.c
+@@ -1851,11 +1851,9 @@ int pc_calcstatus (struct map_session_data *sd, int first)
+     if (sd->matk1 > MAGIC_SKILL_THRESHOLD)
+     {
+         int  bonus = sd->matk1 - MAGIC_SKILL_THRESHOLD;
+-        int  bound = 2 * skill_power (sd, TMW_ASTRAL_SOUL);
+-        if (bonus > bound)
+-            bonus = (bonus * 100) / (100 + bonus - bound);
+-
+-        sd->matk1 = MAGIC_SKILL_THRESHOLD + bonus;
++        // Ok if you are above a certain threshold, you get only (1/8) of that matk1
++        // if you have Astral soul skill you can get the whole power again (and additionally the 1/8 added)
++        sd->matk1 = MAGIC_SKILL_THRESHOLD + (bonus>>3) + ((3*bonus*skill_power(sd, TMW_ASTRAL_SOUL))>>9);
+     }
+ #endif
+     sd->matk2 = 0;
+-- 
+2.1.0
+

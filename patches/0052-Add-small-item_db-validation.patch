@@ -1,0 +1,68 @@
+From 0fb6ed961694ef7f9fbf5c3c9cdc8411c106e5a1 Mon Sep 17 00:00:00 2001
+From: Andrei Karas <akaras@inbox.ru>
+Date: Sat, 27 Nov 2010 23:02:18 +0200
+Subject: [PATCH 052/226] Add small item_db validation.
+
+And remove useless warning about guild castles.
+---
+ src/map/guild.c  |  2 +-
+ src/map/itemdb.c | 11 +++++++++++
+ 2 files changed, 12 insertions(+), 1 deletion(-)
+
+diff --git a/src/map/guild.c b/src/map/guild.c
+index c48a485..6571131 100644
+--- a/src/map/guild.c
++++ b/src/map/guild.c
+@@ -1835,7 +1835,7 @@ int guild_castlealldataload (int len, struct guild_castle *gc)
+         struct guild_castle *c = guild_castle_search (gc->castle_id);
+         if (!c)
+         {
+-            printf ("guild_castlealldataload ??\n");
++//            printf ("guild_castlealldataload ??\n");
+             continue;
+         }
+         memcpy (&c->guild_id, &gc->guild_id,
+diff --git a/src/map/itemdb.c b/src/map/itemdb.c
+index 5d05038..cbad7b3 100644
+--- a/src/map/itemdb.c
++++ b/src/map/itemdb.c
+@@ -368,11 +368,15 @@ static int itemdb_readdb (void)
+ 
+             memcpy (id->name, str[1], 24);
+             memcpy (id->jname, str[2], 24);
++
++            if (!strlen(str[3]))
++                printf("item type error. Id %d\n", nameid);
+             id->type = atoi (str[3]);
+             id->value_buy = atoi (str[4]);
+             id->value_sell = atoi (str[5]);
+             if (id->value_buy == 0 && id->value_sell == 0)
+             {
++                // may be here need warning?
+             }
+             else if (id->value_buy == 0)
+             {
+@@ -382,6 +386,9 @@ static int itemdb_readdb (void)
+             {
+                 id->value_sell = id->value_buy / 2;
+             }
++
++            if (!strlen(str[6]))
++                printf("item weight error. Id %d\n", nameid);
+             id->weight = atoi (str[6]);
+             id->atk = atoi (str[7]);
+             id->def = atoi (str[8]);
+@@ -389,6 +396,10 @@ static int itemdb_readdb (void)
+             id->magic_bonus = atoi (str[10]);
+             id->slot = atoi (str[11]);
+             id->sex = atoi (str[12]);
++
++            if (id->type != 0 && id->type != 3 && !strlen(str[13]))
++                printf("item Loc error. Id %d\n", nameid);
++
+             id->equip = atoi (str[13]);
+             id->wlv = atoi (str[14]);
+             id->elv = atoi (str[15]);
+-- 
+2.1.0
+

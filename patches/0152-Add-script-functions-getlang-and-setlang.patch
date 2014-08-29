@@ -1,0 +1,136 @@
+From 8c09975ac7405a91d0942deaa65a9b9798300c23 Mon Sep 17 00:00:00 2001
+From: Andrei Karas <akaras@inbox.ru>
+Date: Tue, 28 Dec 2010 02:13:50 +0200
+Subject: [PATCH 152/226] Add script functions getlang and setlang.
+
+getlang [NICK]
+setlang lng [,NICK]
+
+Also add function to change current player language.
+---
+ src/map/pc.c     |  9 +++++++++
+ src/map/pc.h     |  1 +
+ src/map/script.c | 58 +++++++++++++++++++++++++++++++++++++++++++++++++++++++-
+ 3 files changed, 67 insertions(+), 1 deletion(-)
+
+diff --git a/src/map/pc.c b/src/map/pc.c
+index 6717e78..fb5469f 100644
+--- a/src/map/pc.c
++++ b/src/map/pc.c
+@@ -8406,6 +8406,15 @@ struct map_session_data *pc_get_partner (struct map_session_data *sd)
+     return p_sd;
+ }
+ 
++int pc_set_lang (struct map_session_data *sd, int lang)
++{
++    if (sd == NULL)
++        return -1;
++
++    sd->status.language = lang;
++    return 0;
++}
++
+ //
+ // ���R�񕜕�
+ //
+diff --git a/src/map/pc.h b/src/map/pc.h
+index f51ff5b..d314db2 100644
+--- a/src/map/pc.h
++++ b/src/map/pc.h
+@@ -176,6 +176,7 @@ int  pc_marriage (struct map_session_data *sd,
+                   struct map_session_data *dstsd);
+ int  pc_divorce (struct map_session_data *sd);
+ struct map_session_data *pc_get_partner (struct map_session_data *sd);
++int  pc_set_lang (struct map_session_data *sd, int lang);
+ int  pc_set_gm_level (int account_id, int level);
+ void pc_setstand (struct map_session_data *sd);
+ void pc_cleanup (struct map_session_data *sd);  // [Fate] Clean up after a logged-out PC
+diff --git a/src/map/script.c b/src/map/script.c
+index 601d026..7178bdf 100644
+--- a/src/map/script.c
++++ b/src/map/script.c
+@@ -451,6 +451,8 @@ int  buildin_setitemscript (struct script_state *st); //Set NEW item bonus scrip
+ int  buildin_setnpcclass (struct script_state *st); // [4144]
+ int  buildin_getnpcclass (struct script_state *st); // [4144]
+ int  buildin_l (struct script_state *st); // [4144]
++int  buildin_setlang (struct script_state *st); // [4144]
++int  buildin_getlang (struct script_state *st); // [4144]
+ 
+ void push_val (struct script_stack *stack, int type, int val);
+ int  run_func (struct script_state *st);
+@@ -944,6 +946,10 @@ struct
+     buildin_getnpcclass, "getnpcclass", "*"}, // [4144]
+     {
+     buildin_l, "l", "s"}, // [4144]
++    {
++    buildin_getlang, "getlang", "*"}, // [4144]
++    {
++    buildin_setlang, "setlang", "i*"}, // [4144]
+         // End Additions
+     {
+ NULL, NULL, NULL},};
+@@ -8797,10 +8803,60 @@ BUILDIN_FUNC(getnpcclass)
+ BUILDIN_FUNC(l)
+ {
+     char *str = script_getstr(st, 2);
+-    script_pushstr(st, (unsigned char *)strdup(lang_trans (str, 1)));
++    TBL_PC *sd;
++    int lng = 0;
++
++    sd = script_rid2sd(st);
++    if (sd)
++        lng = sd->status.language;
++
++    script_pushstr(st, (unsigned char *)strdup(lang_trans (str, lng)));
+     return 0;
+ }
+ 
++BUILDIN_FUNC(getlang)
++{
++    TBL_PC *sd;
++
++    if (script_hasdata(st, 2))
++    {
++        sd = map_nick2sd(script_getstr(st, 2));
++    }
++    else
++    {
++        sd = script_rid2sd(st);
++    }
++    if (!sd)
++    {
++        script_pushint(st, -1);
++        return 0;
++    }
++
++    script_pushint(st, sd->status.language);
++    return 0;
++}
++
++BUILDIN_FUNC(setlang)
++{
++    TBL_PC *sd = 0;
++
++    if (script_hasdata(st, 3))
++    {
++        sd = map_nick2sd(script_getstr(st, 3));
++    }
++    else
++    {
++        sd = script_rid2sd(st);
++    }
++
++    if (!sd)
++        return 0;
++
++    pc_set_lang (sd, script_getnum(st, 2));
++    return 0;
++}
++
++
+ //
+ // ��s��main
+ //
+-- 
+2.1.0
+

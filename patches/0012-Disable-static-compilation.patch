@@ -1,0 +1,25 @@
+From 033df68edb9f17fa041aed9654810bf35edb8a7f Mon Sep 17 00:00:00 2001
+From: Andrei Karas <akaras@inbox.ru>
+Date: Sat, 13 Nov 2010 15:01:05 +0200
+Subject: [PATCH 012/226] Disable static compilation.
+
+---
+ make.defs | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/make.defs b/make.defs
+index 0ca8fbf..6850c93 100644
+--- a/make.defs
++++ b/make.defs
+@@ -4,7 +4,7 @@ ifeq ($(shell uname -m), x86_64)
+ M32=-m32
+ endif
+ 
+-STATIC=-static
++#STATIC=-static
+ 
+ CC = gcc ${M32} ${STATIC}
+ LEX=flex
+-- 
+2.1.0
+

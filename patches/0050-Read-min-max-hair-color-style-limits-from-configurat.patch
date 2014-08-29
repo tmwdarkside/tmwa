@@ -1,0 +1,91 @@
+From ed7bb83167d4b8778e8a665edae815bb9cadc448 Mon Sep 17 00:00:00 2001
+From: Andrei Karas <akaras@inbox.ru>
+Date: Sat, 27 Nov 2010 15:31:58 +0200
+Subject: [PATCH 050/226] Read min/max hair color/style limits from
+ configuration files in char server.
+
+---
+ src/char/char.c  |  9 +++++++--
+ src/char/inter.c | 24 ++++++++++++++++++++++++
+ src/char/inter.h |  4 ++++
+ 3 files changed, 35 insertions(+), 2 deletions(-)
+
+diff --git a/src/char/char.c b/src/char/char.c
+index fc13651..b054a71 100644
+--- a/src/char/char.c
++++ b/src/char/char.c
+@@ -70,6 +70,11 @@ int  name_ignoring_case = 0;    // Allow or not identical name for characters bu
+ int  char_name_option = 0;      // Option to know which letters/symbols are authorised in the name of a character (0: all, 1: only those in char_name_letters, 2: all EXCEPT those in char_name_letters) by [Yor]
+ char char_name_letters[1024] = "";  // list of letters/symbols authorised (or not) in a character name. by [Yor]
+ 
++int min_hair_style = 0;
++int min_hair_color = 0;
++int max_hair_style = 20;
++int max_hair_color = 9;
++
+ struct char_session_data
+ {
+     int  account_id, login_id1, login_id2, sex;
+@@ -982,8 +987,8 @@ int make_new_char (int fd, unsigned char *dat)
+ 
+     if (dat[24] + dat[25] + dat[26] + dat[27] + dat[28] + dat[29] != 5 * 6 ||   // stats
+         dat[30] >= 9 ||         // slots (dat[30] can not be negativ)
+-        /*dat[33] < 0 ||*/ dat[33] >= 30 || // hair style
+-        dat[31] >= 30)
++        dat[33] < min_hair_style || dat[33] >= max_hair_style || // hair style
++        dat[31] < min_hair_color || dat[31] >= max_hair_color)
+     {                           // hair color (dat[31] can not be negativ)
+         char_log
+             ("Make new char error (invalid values): (connection #%d, account: %d) slot %d, name: %s, stats: %d+%d+%d+%d+%d+%d=%d, hair: %d, hair color: %d"
+diff --git a/src/char/inter.c b/src/char/inter.c
+index 2f8e733..2e855bc 100644
+--- a/src/char/inter.c
++++ b/src/char/inter.c
+@@ -256,6 +256,30 @@ int inter_config_read (const char *cfgName)
+             if (db_skip_count <= 0)
+                 db_skip_count = 1;
+         }
++        else if (strcmpi (w1, "min_hair_style") == 0)
++        {
++            min_hair_style = atoi (w2);
++            if (min_hair_style <= 0)
++                min_hair_style = 1;
++        }
++        else if (strcmpi (w1, "max_hair_style") == 0)
++        {
++            max_hair_style = atoi (w2);
++            if (max_hair_style <= 0)
++                max_hair_style = 1;
++        }
++        else if (strcmpi (w1, "min_hair_color") == 0)
++        {
++            min_hair_color = atoi (w2);
++            if (min_hair_color <= 0)
++                min_hair_color = 1;
++        }
++        else if (strcmpi (w1, "max_hair_color") == 0)
++        {
++            max_hair_color = atoi (w2);
++            if (max_hair_color <= 0)
++                max_hair_color = 1;
++        }
+         else if (strcmpi (w1, "import") == 0)
+         {
+             inter_config_read (w2);
+diff --git a/src/char/inter.h b/src/char/inter.h
+index d8af57d..b52ea81 100644
+--- a/src/char/inter.h
++++ b/src/char/inter.h
+@@ -17,5 +17,9 @@ extern int party_share_level;
+ extern int db_count;
+ extern int db_skip_count;
+ extern char inter_log_filename[1024];
++extern int min_hair_style;
++extern int min_hair_color;
++extern int max_hair_style;
++extern int max_hair_color;
+ 
+ #endif
+-- 
+2.1.0
+

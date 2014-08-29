@@ -1,0 +1,34 @@
+From 6229ded60f50f0c72b438cf50216a3afd109026a Mon Sep 17 00:00:00 2001
+From: Andrei Karas <akaras@inbox.ru>
+Date: Tue, 30 Nov 2010 23:18:20 +0200
+Subject: [PATCH 065/226] Correction in grfio.c checking.
+
+---
+ src/common/grfio.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/src/common/grfio.c b/src/common/grfio.c
+index f24b5a1..179cd06 100644
+--- a/src/common/grfio.c
++++ b/src/common/grfio.c
+@@ -623,7 +623,7 @@ int grfio_size (char *fname)
+  */
+ void *grfio_reads (char *fname, int *size)
+ {
+-    if (!fname || !size)
++    if (!fname)
+         return 0;
+ 
+     FILE *in = NULL;
+@@ -788,7 +788,7 @@ static unsigned char *decode_filename (unsigned char *buf, int len)
+ static int grfio_entryread (char *gfname, int gentry)
+ {
+     if (!gfname)
+-        return 0;
++        return 1;
+ 
+     FILE *fp;
+     int  grf_size, list_size;
+-- 
+2.1.0
+

@@ -1,0 +1,26 @@
+From 38b234257cac8b9b2cad28b54c6a251f87e27751 Mon Sep 17 00:00:00 2001
+From: Andrei Karas <akaras@inbox.ru>
+Date: Sat, 27 Nov 2010 01:10:28 +0200
+Subject: [PATCH 048/226] Fix bit strange logic.
+
+---
+ src/map/clif.c | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
+
+diff --git a/src/map/clif.c b/src/map/clif.c
+index 68aa54a..fadc9dd 100644
+--- a/src/map/clif.c
++++ b/src/map/clif.c
+@@ -267,7 +267,8 @@ int clif_send_sub (struct block_list *bl, va_list ap)
+                 clif_emotion_towards (src_bl, bl, EMOTE_IGNORED);
+                 return 0;
+             }
+-            /* fall through... */
++            if ((sd && sd->chatID) || (bl && bl == src_bl))
++                return 0;
+             break;
+         case AREA_WOC:
+             if ((sd && sd->chatID) || (bl && bl == src_bl))
+-- 
+2.1.0
+

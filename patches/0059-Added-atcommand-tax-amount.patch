@@ -1,0 +1,112 @@
+From 261787c075d531a16dabe8b2aa1004350de2a6bb Mon Sep 17 00:00:00 2001
+From: Helmut Grohne <helmut@subdivi.de>
+Date: Wed, 7 Jul 2010 17:53:11 +0200
+Subject: [PATCH 059/226] Added atcommand @tax <amount>
+
+It will remove the desired amount of money (ignoring the sign) from your
+account. This atcommand is available to every player, so they can safely
+destroy their fortune.
+---
+ doc/help.txt        |  4 ++++
+ src/map/atcommand.c | 43 +++++++++++++++++++++++++++++++++++++++++++
+ src/map/atcommand.h |  1 +
+ 3 files changed, 48 insertions(+)
+
+diff --git a/doc/help.txt b/doc/help.txt
+index 7b83258..f127fdd 100644
+--- a/doc/help.txt
++++ b/doc/help.txt
+@@ -222,6 +222,10 @@ Gives you the desired number of skill points.
+ @zeny <amount>
+ Gives you desired amount of Zeny.
+ 
++@tax <amount>
++Removes desired amount of Zeny. Unlike @zeny it only removes no matter what
++sign you give the amount. Therefore it is available to all players
++
+ @str <amount>
+ @agi <amount>
+ @vit <amount>
+diff --git a/src/map/atcommand.c b/src/map/atcommand.c
+index 03e1f13..98b684b 100644
+--- a/src/map/atcommand.c
++++ b/src/map/atcommand.c
+@@ -89,6 +89,7 @@ ATCOMMAND_FUNC (packet);
+ ATCOMMAND_FUNC (statuspoint);
+ ATCOMMAND_FUNC (skillpoint);
+ ATCOMMAND_FUNC (zeny);
++ATCOMMAND_FUNC (tax);
+ ATCOMMAND_FUNC (param);
+ ATCOMMAND_FUNC (guildlevelup);
+ ATCOMMAND_FUNC (recall);
+@@ -268,6 +269,7 @@ static AtCommandInfo atcommand_info[] = {
+     {AtCommand_StatusPoint, "@stpoint", 60, atcommand_statuspoint},
+     {AtCommand_SkillPoint, "@skpoint", 60, atcommand_skillpoint},
+     {AtCommand_Zeny, "@zeny", 60, atcommand_zeny},
++    {AtCommand_Tax, "@tax", 0, atcommand_tax},
+     {AtCommand_Strength, "@str", 60, atcommand_param},
+     {AtCommand_Agility, "@agi", 60, atcommand_param},
+     {AtCommand_Vitality, "@vit", 60, atcommand_param},
+@@ -3483,6 +3485,47 @@ int atcommand_memo (const int fd, struct map_session_data *sd,
+     return 0;
+ }
+ 
++int atcommand_tax (const int fd, struct map_session_data *sd,
++                    const char *command, const char *message)
++{
++    int  zeny, new_zeny;
++
++    if (!fd || !sd || !command)
++        return -1;
++
++    if (!message || !*message || (zeny = atoi (message)) == 0)
++    {
++        clif_displaymessage (fd,
++                             "Please, enter an amount (usage: @tax <amount>).");
++        return -1;
++    }
++
++    if(zeny < 0)
++        zeny = -zeny;
++
++    if(zeny > MAX_ZENY)
++        zeny = MAX_ZENY;
++
++    if(zeny > sd->status.zeny)
++        zeny = sd->status.zeny;
++
++    new_zeny = sd->status.zeny - zeny;
++
++    if (new_zeny != sd->status.zeny)
++    {
++        sd->status.zeny = new_zeny;
++        clif_updatestatus (sd, SP_ZENY);
++        clif_displaymessage (fd, msg_table[176]);   // Number of zenys changed!
++    }
++    else
++    {
++        clif_displaymessage (fd, msg_table[41]);    // Impossible to decrease the number/value.
++        return -1;
++    }
++
++    return 0;
++}
++
+ /*==========================================
+  *
+  *------------------------------------------
+diff --git a/src/map/atcommand.h b/src/map/atcommand.h
+index a726e4b..6f552b9 100644
+--- a/src/map/atcommand.h
++++ b/src/map/atcommand.h
+@@ -59,6 +59,7 @@ enum AtCommandType
+     AtCommand_StatusPoint,
+     AtCommand_SkillPoint,
+     AtCommand_Zeny,
++    AtCommand_Tax,
+     AtCommand_Param,
+     AtCommand_Strength,
+     AtCommand_Agility,
+-- 
+2.1.0
+

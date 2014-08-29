@@ -1,0 +1,98 @@
+From f9ae4096a7567c0ebc6cdda195428a109be8118c Mon Sep 17 00:00:00 2001
+From: Andrei Karas <akaras@inbox.ru>
+Date: Tue, 4 Jan 2011 04:26:58 +0200
+Subject: [PATCH 166/226] Add support for wan clien ip. This ip will be send to
+ client as servers ips.
+
+Configuration parameter wan_ip in char and login configs.
+---
+ src/char/char.c   | 10 +++++++++-
+ src/login/login.c | 16 ++++++++++++++--
+ 2 files changed, 23 insertions(+), 3 deletions(-)
+
+diff --git a/src/char/char.c b/src/char/char.c
+index f9c0c1b..72bbf7b 100644
+--- a/src/char/char.c
++++ b/src/char/char.c
+@@ -76,6 +76,8 @@ int min_hair_color = 0;
+ int max_hair_style = 20;
+ int max_hair_color = 9;
+ 
++int wan_ip = 0;
++
+ struct char_session_data
+ {
+     int  account_id, login_id1, login_id2, sex;
+@@ -3363,7 +3365,9 @@ int parse_char (int fd)
+                              char_dat[sd->found_char[ch]].name,
+                              sd->account_id, ch, ip);
+                         printf ("--Send IP of map-server. ");
+-                        if (lan_ip_check (p))
++                        if (wan_ip)
++                            WFIFOL (fd, 22) = wan_ip;
++                        else if (lan_ip_check (p))
+                             WFIFOL (fd, 22) = inet_addr (lan_map_ip);
+                         else
+                             WFIFOL (fd, 22) = server[i].ip;
+@@ -4022,6 +4026,10 @@ int char_config_read (const char *cfgName)
+         {
+             char_port = atoi (w2);
+         }
++        else if (strcmpi (w1, "wan_ip") == 0)
++        {
++            wan_ip = inet_addr (w2);
++        }
+         else if (strcmpi (w1, "char_maintenance") == 0)
+         {
+             char_maintenance = atoi (w2);
+diff --git a/src/login/login.c b/src/login/login.c
+index 6ba6a59..50d921d 100644
+--- a/src/login/login.c
++++ b/src/login/login.c
+@@ -67,6 +67,7 @@ int  anti_freeze_enable = 0;
+ int  ANTI_FREEZE_INTERVAL = 15;
+ 
+ int  login_fd;
++int  wan_ip = 0;
+ 
+ enum
+ {
+@@ -3820,7 +3821,10 @@ int parse_login (int fd)
+                             {
+                                 if (server_fd[i] >= 0)
+                                 {
+-                                    if (lan_ip_check (p))
++                                    if (wan_ip)
++                                        WFIFOL (fd, 47 + server_num * 32) =
++                                            wan_ip;
++                                    else if (lan_ip_check (p))
+                                         WFIFOL (fd, 47 + server_num * 32) =
+                                             inet_addr (lan_char_ip);
+                                     else
+@@ -3845,7 +3849,11 @@ int parse_login (int fd)
+                             {
+                                 if (server_fd[i] >= 0)
+                                 {
+-                                    if (lan_ip_check (p))
++                                    //+++ one ip send to client
++                                    if (wan_ip)
++                                        WFIFOL (fd, 47 + server_num * 32) =
++                                            wan_ip;
++                                    else if (lan_ip_check (p))
+                                         WFIFOL (fd, 47 + server_num * 32) =
+                                             inet_addr (lan_char_ip);
+                                     else
+@@ -4588,6 +4596,10 @@ int login_config_read (const char *cfgName)
+             {
+                 check_ip_flag = config_switch (w2);
+             }
++            else if (strcmpi (w1, "wan_ip") == 0)
++            {
++                wan_ip = inet_addr (w2);
++            }
+             else if (strcmpi (w1, "order") == 0)
+             {
+                 access_order = atoi (w2);
+-- 
+2.1.0
+

@@ -1,0 +1,816 @@
+From c71635a7c794fe5a8a303428a7ac3573f2977168 Mon Sep 17 00:00:00 2001
+From: Andrei Karas <akaras@inbox.ru>
+Date: Thu, 18 Nov 2010 19:15:36 +0200
+Subject: [PATCH 030/226] Add some compliation options.
+
+Fix new compilation warnings.
+---
+ make.defs           |  5 ++++-
+ src/char/char.c     |  6 +++++-
+ src/char/inter.h    |  2 +-
+ src/common/core.c   |  2 ++
+ src/common/timer.c  |  2 ++
+ src/login/login.c   | 33 ++++++++++++++++++---------------
+ src/map/atcommand.c |  4 ++++
+ src/map/atcommand.h |  4 ++--
+ src/map/battle.c    | 16 ++++++++++++++++
+ src/map/chrif.c     | 16 ++++++++++++++++
+ src/map/clif.c      |  6 ++++++
+ src/map/intif.c     |  4 ++++
+ src/map/itemdb.c    |  2 ++
+ src/map/map.c       |  6 ++++++
+ src/map/map.h       |  4 ++--
+ src/map/mob.c       | 12 ++++++++++++
+ src/map/npc.c       |  6 ++++++
+ src/map/pc.c        | 15 ++++++++++++++-
+ src/map/script.c    | 21 ++++++++++++++++++++-
+ src/map/skill.c     | 10 ++++++++--
+ src/map/tmw.h       |  2 +-
+ 21 files changed, 151 insertions(+), 27 deletions(-)
+
+diff --git a/make.defs b/make.defs
+index 6850c93..5da34a5 100644
+--- a/make.defs
++++ b/make.defs
+@@ -17,7 +17,10 @@ else
+ MAKE = make
+ endif
+ 
+-OPT = -pipe -g -fno-strict-aliasing -O2 -Wall
++#-Wredundant-decls -Wmissing-format-attribute -Wswitch-default 
++OPT = -pipe -g -fno-strict-aliasing -O2 -Wall -Wunreachable-code -Wmissing-field-initializers -Wabi \
++-Wdisabled-optimization -Wuninitialized -Wvolatile-register-var -Winvalid-pch \
++-Wnormalized=nfkc -Wmissing-noreturn -Waddress
+ 
+ ifeq ($(findstring CYGWIN,$(PLATFORM)), CYGWIN)
+ OS_TYPE = -DCYGWIN
+diff --git a/src/char/char.c b/src/char/char.c
+index 24633bd..8b0ffdf 100644
+--- a/src/char/char.c
++++ b/src/char/char.c
+@@ -1249,8 +1249,10 @@ char *job_name (int class)
+             return "Baby Peco Crusader";
+         case 4045:
+             return "Super Baby";
++        default:
++            return "Unknown Job";
+     }
+-    return "Unknown Job";
++//    return "Unknown Job";
+ }
+ 
+ //-------------------------------------------------------------
+@@ -2860,6 +2862,8 @@ int parse_frommap (int fd)
+                                 else
+                                     WFIFOW (fd, 32) = 2;    // answer: 0-login-server resquest done, 1-player not found, 2-gm level too low, 3-login-server offline
+                                 break;
++                            default:
++                                break;
+                         }
+                     }
+                     else
+diff --git a/src/char/inter.h b/src/char/inter.h
+index 93fd4a3..d8af57d 100644
+--- a/src/char/inter.h
++++ b/src/char/inter.h
+@@ -9,7 +9,7 @@ int  inter_mapif_init (int fd);
+ 
+ int  inter_check_length (int fd, int length);
+ 
+-int  inter_log (char *fmt, ...);
++int  inter_log (char *fmt, ...) __attribute__((__format__(__printf__, 1, 2)));
+ 
+ #define inter_cfgName "conf/inter_athena.conf"
+ 
+diff --git a/src/common/core.c b/src/common/core.c
+index bf48dfc..daecb51 100644
+--- a/src/common/core.c
++++ b/src/common/core.c
+@@ -55,6 +55,8 @@ static void sig_proc (int sn)
+         case SIGCHLD:
+             wait (&i);
+             break;
++        default:
++            break;
+     }
+ }
+ 
+diff --git a/src/common/timer.c b/src/common/timer.c
+index d9552fe..9002ad7 100644
+--- a/src/common/timer.c
++++ b/src/common/timer.c
+@@ -338,6 +338,8 @@ int do_timer (unsigned int tick)
+                     timer_data[i].type &= ~TIMER_REMOVE_HEAP;
+                     push_timer_heap (i);
+                     break;
++                default:
++                    break;
+             }
+         }
+     }
+diff --git a/src/login/login.c b/src/login/login.c
+index e40e4d3..65ba1e4 100644
+--- a/src/login/login.c
++++ b/src/login/login.c
+@@ -136,6 +136,7 @@ pid_t pid = 0; // For forked DB writes
+ 
+ #define VERSION_2_UPDATEHOST 0x01   // client supports updatehost
+ #define VERSION_2_SERVERORDER 0x02  // send servers in forward order
++
+ //------------------------------
+ // Writing function of logs file
+ //------------------------------
+@@ -1936,7 +1937,7 @@ int parse_fromchar (int fd)
+                                         login_log
+                                             ("Char-server '%s': Ban request (account: %d, new final date of banishment: %d (%s), ip: %s)."
+                                              RETCODE, server[id].name, acc,
+-                                             timestamp,
++                                             (int)timestamp,
+                                              (timestamp ==
+                                               0 ? "no banishment" : tmpstr),
+                                              ip);
+@@ -3060,7 +3061,7 @@ int parse_admin (int fd)
+                         memcpy (WFIFOP (fd, 6), auth_dat[i].userid, 24);
+                         login_log
+                             ("'ladmin': Change of a validity limit (account: %s, new validity: %d (%s), ip: %s)"
+-                             RETCODE, auth_dat[i].userid, timestamp,
++                             RETCODE, auth_dat[i].userid, (int)timestamp,
+                              (timestamp == 0 ? "unlimited" : tmpstr), ip);
+                         auth_dat[i].connect_until_time = timestamp;
+                         WFIFOL (fd, 2) = auth_dat[i].account_id;
+@@ -3070,7 +3071,7 @@ int parse_admin (int fd)
+                         memcpy (WFIFOP (fd, 6), account_name, 24);
+                         login_log
+                             ("'ladmin': Attempt to change the validity limit of an unknown account (account: %s, received validity: %d (%s), ip: %s)"
+-                             RETCODE, account_name, timestamp,
++                             RETCODE, account_name, (int)timestamp,
+                              (timestamp == 0 ? "unlimited" : tmpstr), ip);
+                     }
+                     WFIFOL (fd, 30) = timestamp;
+@@ -3101,7 +3102,7 @@ int parse_admin (int fd)
+                         WFIFOL (fd, 2) = auth_dat[i].account_id;
+                         login_log
+                             ("'ladmin': Change of the final date of a banishment (account: %s, new final date of banishment: %d (%s), ip: %s)"
+-                             RETCODE, auth_dat[i].userid, timestamp,
++                             RETCODE, auth_dat[i].userid, (int)timestamp,
+                              (timestamp == 0 ? "no banishment" : tmpstr), ip);
+                         if (auth_dat[i].ban_until_time != timestamp)
+                         {
+@@ -3126,7 +3127,7 @@ int parse_admin (int fd)
+                         memcpy (WFIFOP (fd, 6), account_name, 24);
+                         login_log
+                             ("'ladmin': Attempt to change the final date of a banishment of an unknown account (account: %s, received final date of banishment: %d (%s), ip: %s)"
+-                             RETCODE, account_name, timestamp,
++                             RETCODE, account_name, (int)timestamp,
+                              (timestamp == 0 ? "no banishment" : tmpstr), ip);
+                     }
+                     WFIFOL (fd, 30) = timestamp;
+@@ -3186,7 +3187,7 @@ int parse_admin (int fd)
+                                                                           32),
+                                  (short) RFIFOW (fd, 34), (short) RFIFOW (fd,
+                                                                           36),
+-                                 timestamp,
++                                 (int)timestamp,
+                                  (timestamp == 0 ? "no banishment" : tmpstr),
+                                  ip);
+                             if (auth_dat[i].ban_until_time != timestamp)
+@@ -3213,16 +3214,16 @@ int parse_admin (int fd)
+                                       gmtime (&auth_dat[i].ban_until_time));
+                             login_log
+                                 ("'ladmin': Impossible to adjust the final date of a banishment (account: %s, %d (%s) + (%+d y %+d m %+d d %+d h %+d mn %+d s) -> ???, ip: %s)"
+-                                 RETCODE, auth_dat[i].userid,
++                                 RETCODE,
++                                 auth_dat[i].userid,
+                                  auth_dat[i].ban_until_time,
+-                                 (auth_dat[i].ban_until_time ==
+-                                  0 ? "no banishment" : tmpstr),
+-                                 (short) RFIFOW (fd, 26), (short) RFIFOW (fd,
+-                                                                          28),
+-                                 (short) RFIFOW (fd, 30), (short) RFIFOW (fd,
+-                                                                          32),
+-                                 (short) RFIFOW (fd, 34), (short) RFIFOW (fd,
+-                                                                          36),
++                                 (auth_dat[i].ban_until_time == 0 ? "no banishment" : tmpstr),
++                                 (short) RFIFOW (fd, 26),
++                                 (short) RFIFOW (fd, 28),
++                                 (short) RFIFOW (fd, 30),
++                                 (short) RFIFOW (fd, 32),
++                                 (short) RFIFOW (fd, 34),
++                                 (short) RFIFOW (fd, 36),
+                                  ip);
+                         }
+                         WFIFOL (fd, 30) =
+@@ -4506,6 +4507,8 @@ int login_config_read (const char *cfgName)
+                     case 3:
+                         strcpy (date_format, "%Y-%m-%d %H:%M:%S");  // 2004-12-31 23:59:59
+                         break;
++                    default:
++                        break;
+                 }
+             }
+             else if (strcmpi (w1, "min_level_to_connect") == 0)
+diff --git a/src/map/atcommand.c b/src/map/atcommand.c
+index ca6577b..d196c8d 100644
+--- a/src/map/atcommand.c
++++ b/src/map/atcommand.c
+@@ -559,6 +559,8 @@ char *job_name (int class)
+             return "Baby Peco Crusader";
+         case 4045:
+             return "Super Baby";
++        default:
++            break;
+     }
+     return "Unknown Job";
+ }
+@@ -8330,6 +8332,8 @@ atcommand_storeall (const int fd, struct map_session_data *sd,
+                 clif_displaymessage (fd,
+                                      "You can't open the storage currently.");
+                 return 1;
++            default:
++                break;
+         }
+     }
+     for (i = 0; i < MAX_INVENTORY; i++)
+diff --git a/src/map/atcommand.h b/src/map/atcommand.h
+index 859ac6b..a726e4b 100644
+--- a/src/map/atcommand.h
++++ b/src/map/atcommand.h
+@@ -219,7 +219,7 @@ int  atcommand_recall (const int fd, struct map_session_data *sd, const char *co
+ int  atcommand_config_read (const char *cfgName);
+ int  msg_config_read (const char *cfgName);
+ 
+-void log_atcommand (struct map_session_data *sd, const char *fmt, ...);
+-void gm_log (const char *fmt, ...);
++void log_atcommand (struct map_session_data *sd, const char *fmt, ...) __attribute__((__format__(__printf__, 2, 3)));
++void gm_log (const char *fmt, ...) __attribute__((__format__(__printf__, 1, 2)));
+ 
+ #endif
+diff --git a/src/map/battle.c b/src/map/battle.c
+index 1eb2bb3..b2b521f 100644
+--- a/src/map/battle.c
++++ b/src/map/battle.c
+@@ -2019,6 +2019,8 @@ int battle_addmastery (struct map_session_data *sd, struct block_list *target,
+             }
+             break;
+         }
++        default:
++            break;
+     }
+     damage = dmg + damage;
+     return (damage);
+@@ -2439,6 +2441,8 @@ static struct Damage battle_calc_mob_weapon_attack (struct block_list *src,
+                 case AS_SPLASHER:  /* ベナムスプラッシャー */
+                     damage = damage * (200 + 20 * skill_lv) / 100;
+                     break;
++                default:
++                    break;
+             }
+         }
+ 
+@@ -3555,6 +3559,8 @@ static struct Damage battle_calc_pc_weapon_attack (struct block_list *src,
+                                              battle_get_element (target));
+                     }
+                     break;
++                default:
++                    break;
+             }
+         }
+         if (da == 2)
+@@ -4374,6 +4380,8 @@ struct Damage battle_calc_magic_attack (struct block_list *bl,
+                             ("battle_calc_magic_attack(): napalmvulcan enemy count=0 !\n");
+                 }
+                 break;
++            default:
++                break;
+         }
+     }
+ 
+@@ -4634,6 +4642,8 @@ struct Damage battle_calc_misc_attack (struct block_list *bl,
+                 (100 + 50 * skill_lv +
+                  (dex / 10 + int_ / 2 + skill * 3 + 40) * 2);
+             break;
++        default:
++            break;
+     }
+ 
+     ele = skill_get_pl (skill_num);
+@@ -5009,6 +5019,8 @@ int battle_weapon_attack (struct block_list *src, struct block_list *target,
+                                                                    tick,
+                                                                    flag);
+                                 break;
++                            default:
++                                break;
+                         }
+                     }
+                     if (!f)
+@@ -5050,6 +5062,8 @@ int battle_weapon_attack (struct block_list *src, struct block_list *target,
+                                                            skilllv, tick,
+                                                            flag);
+                             break;
++                        default:
++                            break;
+                     }
+                 }
+             }
+@@ -5103,6 +5117,8 @@ int battle_weapon_attack (struct block_list *src, struct block_list *target,
+                                                                    tick,
+                                                                    flag);
+                                 break;
++                            default:
++                                break;
+                         }
+                     }
+                     if (!f)
+diff --git a/src/map/chrif.c b/src/map/chrif.c
+index 1bb6538..b4925c5 100644
+--- a/src/map/chrif.c
++++ b/src/map/chrif.c
+@@ -530,6 +530,8 @@ int chrif_char_ask_name_answer (int fd)
+                                      "Login-server is offline. Impossible to block the the player '%s'.",
+                                      player_name);
+                             break;
++                        default:
++                            break;
+                     }
+                     break;
+                 case 2:        // ban
+@@ -551,6 +553,8 @@ int chrif_char_ask_name_answer (int fd)
+                                      "Login-server is offline. Impossible to ban the the player '%s'.",
+                                      player_name);
+                             break;
++                        default:
++                            break;
+                     }
+                     break;
+                 case 3:        // unblock
+@@ -572,6 +576,8 @@ int chrif_char_ask_name_answer (int fd)
+                                      "Login-server is offline. Impossible to unblock the the player '%s'.",
+                                      player_name);
+                             break;
++                        default:
++                            break;
+                     }
+                     break;
+                 case 4:        // unban
+@@ -593,6 +599,8 @@ int chrif_char_ask_name_answer (int fd)
+                                      "Login-server is offline. Impossible to unban the the player '%s'.",
+                                      player_name);
+                             break;
++                        default:
++                            break;
+                     }
+                     break;
+                 case 5:        // changesex
+@@ -614,8 +622,12 @@ int chrif_char_ask_name_answer (int fd)
+                                      "Login-server is offline. Impossible to change the sex of the the player '%s'.",
+                                      player_name);
+                             break;
++                        default:
++                            break;
+                     }
+                     break;
++                default:
++                    break;
+             }
+         }
+         if (output[0] != '\0')
+@@ -1111,6 +1123,10 @@ static int ladmin_itemfrob_c2 (struct block_list *bl, int source_id,
+             FIX (item->item_data);
+             break;
+         }
++
++        default:
++            break;
++
+     }
+ #undef FIX
+ #undef IFIX
+diff --git a/src/map/clif.c b/src/map/clif.c
+index ddc4686..05539f3 100644
+--- a/src/map/clif.c
++++ b/src/map/clif.c
+@@ -279,6 +279,8 @@ int clif_send_sub (struct block_list *bl, va_list ap)
+                 && sd->chatID == ((struct map_session_data *) src_bl)->chatID)
+                 return 0;
+             break;
++        default:
++            break;
+     }
+ 
+     if (session[sd->fd] != NULL)
+@@ -4117,6 +4119,8 @@ int clif_pcoutsight (struct block_list *bl, va_list ap)
+         case BL_SKILL:
+             clif_clearchar_skillunit ((struct skill_unit *) bl, sd->fd);
+             break;
++        default:
++            break;
+     }
+     return 0;
+ }
+@@ -4155,6 +4159,8 @@ int clif_pcinsight (struct block_list *bl, va_list ap)
+         case BL_SKILL:
+             clif_getareachar_skillunit (sd, (struct skill_unit *) bl);
+             break;
++        default:
++            break;
+     }
+ 
+     return 0;
+diff --git a/src/map/intif.c b/src/map/intif.c
+index 9cff4fe..d86fef4 100644
+--- a/src/map/intif.c
++++ b/src/map/intif.c
+@@ -991,6 +991,8 @@ int intif_parse_GuildBasicInfoChanged (int fd)
+         case GBI_SKILLPOINT:
+             g->skill_point = dd;
+             break;
++        default:
++            break;
+     }
+     return 0;
+ }
+@@ -1023,6 +1025,8 @@ int intif_parse_GuildMemberInfoChanged (int fd)
+         case GMI_EXP:
+             g->member[idx].exp = dd;
+             break;
++        default:
++            break;
+     }
+     return 0;
+ }
+diff --git a/src/map/itemdb.c b/src/map/itemdb.c
+index 5f11f51..f06ec8a 100644
+--- a/src/map/itemdb.c
++++ b/src/map/itemdb.c
+@@ -261,6 +261,8 @@ int itemdb_isdropable (int nameid)
+         case 2634:             //結婚指輪
+         case 2635:             //結婚指輪
+             return 0;
++        default:
++            break;
+     }
+ 
+     return 1;
+diff --git a/src/map/map.c b/src/map/map.c
+index 080827b..4884e07 100644
+--- a/src/map/map.c
++++ b/src/map/map.c
+@@ -1526,6 +1526,8 @@ int map_check_dir (int s_dir, int t_dir)
+             if (t_dir == 6 || t_dir == 0 || t_dir == 7)
+                 return 0;
+             break;
++        default:
++            break;
+     }
+     return 1;
+ }
+@@ -2189,6 +2191,8 @@ static int cleanup_sub (struct block_list *bl, va_list ap)
+         case BL_SPELL:
+             spell_free_invocation ((struct invocation *) bl);
+             break;
++        default:
++            break;
+     }
+ 
+     return 0;
+@@ -2354,6 +2358,8 @@ int map_scriptcont (struct map_session_data *sd, int id)
+         case BL_SPELL:
+             spell_execute_script ((struct invocation *) bl);
+             break;
++        default:
++            break;
+     }
+ 
+     return 0;
+diff --git a/src/map/map.h b/src/map/map.h
+index dde7d7f..782f4e6 100644
+--- a/src/map/map.h
++++ b/src/map/map.h
+@@ -756,7 +756,7 @@ int  map_quit (struct map_session_data *);
+ int  map_addnpc (int, struct npc_data *);
+ 
+ extern FILE *map_logfile;
+-void map_write_log (char *format, ...);
++void map_write_log (char *format, ...) __attribute__((__format__(__printf__, 1, 2)));
+ #define MAP_LOG(format, args...) {if (map_logfile) map_write_log(format, ##args);}
+ 
+ #define MAP_LOG_PC(sd, fmt, args...) MAP_LOG("PC%d %d:%d,%d " fmt, sd->status.char_id, sd->bl.m, sd->bl.x, sd->bl.y, ## args)
+@@ -814,7 +814,7 @@ int  path_blownpos (int m, int x0, int y0, int dx, int dy, int count);
+ 
+ int  map_who (int fd);
+ 
+-void map_helpscreen ();         // [Valaris]
++void map_helpscreen () __attribute__((noreturn));         // [Valaris]
+ int  map_delmap (char *mapname);
+ 
+ #endif
+diff --git a/src/map/mob.c b/src/map/mob.c
+index 45ecbe0..3894757 100644
+--- a/src/map/mob.c
++++ b/src/map/mob.c
+@@ -1084,6 +1084,8 @@ int mob_changestate (struct mob_data *md, int state, int type)
+             md->hp = md->target_id = md->attacked_id = 0;
+             md->state.targettype = NONE_ATTACKABLE;
+             break;
++        default:
++            break;
+     }
+ 
+     return 0;
+@@ -3795,6 +3797,8 @@ int mobskill_castend_id (int tid, unsigned int tick, int id, int data)
+                 skill_castend_nodamage_id (&md->bl, bl, md->skillid,
+                                            md->skilllv, tick, 0);
+             break;
++        default:
++            break;
+     }
+ 
+     return 0;
+@@ -3860,6 +3864,8 @@ int mobskill_castend_pos (int tid, unsigned int tick, int id, int data)
+             case AL_WARP:
+                 range = 1;
+                 break;
++            default:
++                break;
+         }
+         if (range >= 0)
+         {
+@@ -3890,6 +3896,8 @@ int mobskill_castend_pos (int tid, unsigned int tick, int id, int data)
+             case AL_WARP:
+                 range = 0;
+                 break;
++            default:
++                break;
+         }
+         if (range >= 0)
+         {
+@@ -4022,6 +4030,8 @@ int mobskill_use_id (struct mob_data *md, struct block_list *target,
+         case SA_SPELLBREAKER:
+             forcecast = 1;
+             break;
++        default:
++            break;
+     }
+ 
+     if (battle_config.mob_skill_log == 1)
+@@ -4361,6 +4371,8 @@ int mobskill_use (struct mob_data *md, unsigned int tick, int event)
+                     flag = ((event & 0xffff) == MSC_SKILLUSED
+                             && ((event >> 16) == c2 || c2 == 0));
+                     break;
++                default:
++                    break;
+             }
+         }
+ 
+diff --git a/src/map/npc.c b/src/map/npc.c
+index 58d7eef..145e01a 100644
+--- a/src/map/npc.c
++++ b/src/map/npc.c
+@@ -921,6 +921,8 @@ int npc_touch_areanpc (struct map_session_data *sd, int m, int x, int y)
+             free (name);
+             break;
+         }
++        default:
++            break;
+     }
+     return 0;
+ }
+@@ -1002,6 +1004,8 @@ int npc_click (struct map_session_data *sd, int id)
+                 clif_scriptclose (sd, id);
+             }
+             break;
++        default:
++            break;
+     }
+ 
+     return 0;
+@@ -1129,6 +1133,8 @@ int npc_buylist (struct map_session_data *sd, int n,
+                 break;
+             case ADDITEM_OVERAMOUNT:
+                 return 2;
++            default:
++                break;
+         }
+ 
+         w += itemdb_weight (item_list[i * 2 + 1]) * item_list[i * 2];
+diff --git a/src/map/pc.c b/src/map/pc.c
+index e8037ff..0969e14 100644
+--- a/src/map/pc.c
++++ b/src/map/pc.c
+@@ -1135,7 +1135,8 @@ int pc_calc_skilltree (struct map_session_data *sd)
+                 case 4043:
+                     c = 4029;
+                     break;
+-
++                default:
++                    break;
+             }
+         }
+     }
+@@ -5472,6 +5473,8 @@ int pc_statusup (struct map_session_data *sd, int type)
+         case SP_LUK:
+             val = sd->status.luk;
+             break;
++        default:
++            break;
+     }
+ 
+     need = pc_need_status_point (sd, type);
+@@ -5502,6 +5505,8 @@ int pc_statusup (struct map_session_data *sd, int type)
+         case SP_LUK:
+             val = ++sd->status.luk;
+             break;
++        default:
++            break;
+     }
+     sd->status.status_point -= need;
+     if (need != pc_need_status_point (sd, type))
+@@ -5587,6 +5592,8 @@ int pc_statusup2 (struct map_session_data *sd, int type, int val)
+                 val = sd->status.luk + val;
+             sd->status.luk = val;
+             break;
++        default:
++            break;
+     }
+     clif_updatestatus (sd, type - SP_STR + SP_USTR);
+     clif_updatestatus (sd, type);
+@@ -6220,6 +6227,8 @@ int pc_readparam (struct map_session_data *sd, int type)
+         case SP_FAME:
+             val = sd->fame;
+             break;
++        default:
++            break;
+     }
+ 
+     return val;
+@@ -6356,6 +6365,8 @@ int pc_setparam (struct map_session_data *sd, int type, int val)
+         case SP_FAME:
+             sd->fame = val;
+             break;
++        default:
++            break;
+     }
+     clif_updatestatus (sd, type);
+ 
+@@ -6779,6 +6790,8 @@ int pc_changelook (struct map_session_data *sd, int type, int val)
+             break;
+         case LOOK_SHOES:
+             break;
++        default:
++            break;
+     }
+     clif_changelook (&sd->bl, type, val);
+ 
+diff --git a/src/map/script.c b/src/map/script.c
+index 14a4dd3..206a3b8 100644
+--- a/src/map/script.c
++++ b/src/map/script.c
+@@ -1323,6 +1323,8 @@ unsigned char *parse_expr (unsigned char *p)
+         case '}':
+             disp_error_message ("unexpected char", p);
+             exit (1);
++        default:
++            break;
+     }
+     p = parse_subexpr (p, -1);
+ #ifdef DEBUG_FUNCIN
+@@ -4537,6 +4539,8 @@ int buildin_getnpctimer (struct script_state *st)
+         case 2:
+             val = nd->u.scr.timeramount;
+             break;
++        default:
++            break;
+     }
+     push_val (st->stack, C_INT, val);
+     return 0;
+@@ -4659,6 +4663,8 @@ int buildin_getusers (struct script_state *st)
+         case 1:
+             val = map_getusers ();
+             break;
++        default:
++            break;
+     }
+     push_val (st->stack, C_INT, val);
+     return 0;
+@@ -5247,6 +5253,8 @@ int buildin_getwaitingroomstate (struct script_state *st)
+         case 16:
+             push_str (st->stack, C_CONSTSTR, cd->npc_event);
+             return 0;
++        default:
++            break;
+     }
+     push_val (st->stack, C_INT, val);
+     return 0;
+@@ -5431,6 +5439,8 @@ int buildin_setmapflag (struct script_state *st)
+             case MF_RAIN:      // [Valaris]
+                 map[m].flag.rain = 1;
+                 break;
++            default:
++                break;
+         }
+     }
+ 
+@@ -5503,7 +5513,8 @@ int buildin_removemapflag (struct script_state *st)
+             case MF_RAIN:      // [Valaris]
+                 map[m].flag.rain = 0;
+                 break;
+-
++            default:
++                break;
+         }
+     }
+ 
+@@ -7036,6 +7047,8 @@ int buildin_getlook (struct script_state *st)
+             break;
+         case LOOK_SHOES:       //9
+             break;
++        default:
++            break;
+     }
+ 
+     push_val (st->stack, C_INT, val);
+@@ -7071,6 +7084,8 @@ int buildin_getsavepoint (struct script_state *st)
+         case 2:
+             push_val (st->stack, C_INT, y);
+             break;
++        default:
++            break;
+     }
+     return 0;
+ }
+@@ -7417,6 +7432,8 @@ void op_2num (struct script_state *st, int op, int i1, int i2)
+         case C_L_SHIFT:
+             i1 = i1 << i2;
+             break;
++        default:
++            break;
+     }
+     push_val (st->stack, C_INT, i1);
+ }
+@@ -7475,6 +7492,8 @@ void op_1num (struct script_state *st, int op)
+         case C_LNOT:
+             i1 = !i1;
+             break;
++        default:
++            break;
+     }
+     push_val (st->stack, C_INT, i1);
+ }
+diff --git a/src/map/skill.c b/src/map/skill.c
+index 5745374..77c4e33 100644
+--- a/src/map/skill.c
++++ b/src/map/skill.c
+@@ -1000,6 +1000,8 @@ int skill_get_unit_id (int id, int flag)
+             return 0xb6;        /* フォグウォール */
+         case PF_SPIDERWEB:
+             return 0xb7;        /* スパイダーウェッブ */
++        default:
++            break;
+     }
+     return 0;
+     /*
+@@ -1418,6 +1420,8 @@ int skill_additional_effect (struct block_list *src, struct block_list *bl,
+                                        skilllv, 0, 0, 0,
+                                        skill_get_time2 (skillid, skilllv), 0);
+             break;
++        default:
++            break;
+     }
+ 
+     if (sd && skillid != MC_CARTREVOLUTION && attack_type & BF_WEAPON)
+@@ -2408,6 +2412,8 @@ static int skill_timerskill (int tid, unsigned int tick, int id, int data)
+                     skill_unitsetting (src, skl->skill_id, skl->skill_lv,
+                                        skl->x, skl->y, 0);
+                 break;
++            default:
++                break;
+         }
+     }
+ 
+@@ -3612,8 +3618,8 @@ int skill_castend_nodamage_id (struct block_list *src, struct block_list *bl,
+         case SN_SIGHT:         /* トゥルーサイト */
+         case WS_MELTDOWN:      /* メルトダウン */
+         case ST_REJECTSWORD:   /* リジェクトソード */
+-        case HW_MAGICPOWER:    /* 魔法力増幅 */
+-        case PF_MEMORIZE:      /* メモライズ */
++        case HW_MAGICPOWER:
++        case PF_MEMORIZE:
+             clif_skill_nodamage (src, bl, skillid, skilllv, 1);
+             skill_status_change_start (bl, SkillStatusChangeTable[skillid],
+                                        skilllv, 0, 0, 0,
+diff --git a/src/map/tmw.h b/src/map/tmw.h
+index 5141159..2d6f8b8 100644
+--- a/src/map/tmw.h
++++ b/src/map/tmw.h
+@@ -7,7 +7,7 @@
+ int  tmw_CheckChatSpam (struct map_session_data *sd, char *message);
+ int  tmw_ShorterStrlen (char *s1, char *s2);
+ int  tmw_CheckChatLameness (struct map_session_data *sd, char *message);
+-void tmw_GmHackMsg (const char *fmt, ...);
++void tmw_GmHackMsg (const char *fmt, ...) __attribute__((__format__(__printf__, 1, 2)));
+ void tmw_AutoBan (struct map_session_data *sd, char *reason, int length);
+ void tmw_TrimStr (char *str);
+ 
+-- 
+2.1.0
+

@@ -1,0 +1,84 @@
+From 6f8c49e1d8b5ca50717fdf77c61f03464c49f510 Mon Sep 17 00:00:00 2001
+From: Andrei Karas <akaras@inbox.ru>
+Date: Sun, 28 Nov 2010 16:57:21 +0200
+Subject: [PATCH 056/226] Fix reading hair parameters from config.
+
+Was in incorrect file.
+---
+ src/char/char.c  | 24 ++++++++++++++++++++++++
+ src/char/inter.c | 24 ------------------------
+ 2 files changed, 24 insertions(+), 24 deletions(-)
+
+diff --git a/src/char/char.c b/src/char/char.c
+index b054a71..787d787 100644
+--- a/src/char/char.c
++++ b/src/char/char.c
+@@ -4137,6 +4137,30 @@ int char_config_read (const char *cfgName)
+             if (ANTI_FREEZE_INTERVAL < 5)
+                 ANTI_FREEZE_INTERVAL = 5;   // minimum 5 seconds
+         }
++        else if (strcmpi (w1, "min_hair_style") == 0)
++        {
++            min_hair_style = atoi (w2);
++            if (min_hair_style <= 0)
++                min_hair_style = 1;
++        }
++        else if (strcmpi (w1, "max_hair_style") == 0)
++        {
++            max_hair_style = atoi (w2);
++            if (max_hair_style <= 0)
++                max_hair_style = 1;
++        }
++        else if (strcmpi (w1, "min_hair_color") == 0)
++        {
++            min_hair_color = atoi (w2);
++            if (min_hair_color <= 0)
++                min_hair_color = 1;
++        }
++        else if (strcmpi (w1, "max_hair_color") == 0)
++        {
++            max_hair_color = atoi (w2);
++            if (max_hair_color <= 0)
++                max_hair_color = 1;
++        }
+         else if (strcmpi (w1, "import") == 0)
+         {
+             char_config_read (w2);
+diff --git a/src/char/inter.c b/src/char/inter.c
+index 2e855bc..2f8e733 100644
+--- a/src/char/inter.c
++++ b/src/char/inter.c
+@@ -256,30 +256,6 @@ int inter_config_read (const char *cfgName)
+             if (db_skip_count <= 0)
+                 db_skip_count = 1;
+         }
+-        else if (strcmpi (w1, "min_hair_style") == 0)
+-        {
+-            min_hair_style = atoi (w2);
+-            if (min_hair_style <= 0)
+-                min_hair_style = 1;
+-        }
+-        else if (strcmpi (w1, "max_hair_style") == 0)
+-        {
+-            max_hair_style = atoi (w2);
+-            if (max_hair_style <= 0)
+-                max_hair_style = 1;
+-        }
+-        else if (strcmpi (w1, "min_hair_color") == 0)
+-        {
+-            min_hair_color = atoi (w2);
+-            if (min_hair_color <= 0)
+-                min_hair_color = 1;
+-        }
+-        else if (strcmpi (w1, "max_hair_color") == 0)
+-        {
+-            max_hair_color = atoi (w2);
+-            if (max_hair_color <= 0)
+-                max_hair_color = 1;
+-        }
+         else if (strcmpi (w1, "import") == 0)
+         {
+             inter_config_read (w2);
+-- 
+2.1.0
+

@@ -1,0 +1,74 @@
+From e7167ca6cfdb59194e11a5f1bbd10c2b5248e1b2 Mon Sep 17 00:00:00 2001
+From: Andrei Karas <akaras@inbox.ru>
+Date: Thu, 23 Dec 2010 05:34:08 +0200
+Subject: [PATCH 138/226] Port from eathena script commands sqrt and distance.
+
+---
+ src/map/script.c | 37 +++++++++++++++++++++++++++++++++++++
+ 1 file changed, 37 insertions(+)
+
+diff --git a/src/map/script.c b/src/map/script.c
+index 31177a1..6110dcb 100644
+--- a/src/map/script.c
++++ b/src/map/script.c
+@@ -433,6 +433,10 @@ int  buildin_charisalpha (struct script_state *st); //isalpha [Valaris]
+ int  buildin_compare (struct script_state *st); // Lordalfa - To bring strstr to scripting Engine.
+ int  buildin_getiteminfo (struct script_state *st); //[Lupus] returns Items Buy / sell Price, etc info
+ int  buildin_setiteminfo (struct script_state *st); //[Lupus] set Items Buy / sell Price, etc info
++// [zBuffer] List of mathematics commands --->
++int  buildin_sqrt (struct script_state *st);
++int  buildin_distance (struct script_state *st);
++// <--- [zBuffer] List of mathematics commands
+ 
+ void push_val (struct script_stack *stack, int type, int val);
+ int  run_func (struct script_state *st);
+@@ -895,6 +899,12 @@ struct
+     {
+     buildin_setiteminfo, "setiteminfo", "iii"}, //[Lupus] set Items Buy / sell Price, etc info
+     {
++    // [zBuffer] List of mathematics commands --->
++    buildin_sqrt, "sqrt", "i"},
++    {
++    buildin_distance, "distance", "iiii"},
++    {
++    // <--- [zBuffer] List of mathematics commands
+     buildin_compare, "compare", "ss"}, // Lordalfa - To bring strstr to scripting Engine.
+         // End Additions
+     {
+@@ -8372,6 +8382,33 @@ BUILDIN_FUNC(setiteminfo)
+     return 0;
+ }
+ 
++// [zBuffer] List of mathematics commands --->
++BUILDIN_FUNC(sqrt)
++{
++    double i, a;
++    i = script_getnum(st, 2);
++    a = sqrt(i);
++    script_pushint(st, (int)a);
++    return 0;
++}
++
++BUILDIN_FUNC(distance)
++{
++    int dx, dy;
++
++    dx = script_getnum(st, 2) - script_getnum(st, 4);
++    dy = script_getnum(st, 3) - script_getnum(st, 5);
++
++    if (dx < 0)
++        dx = -dx;
++    if (dy < 0)
++        dy = -dy;
++
++    script_pushint(st, dx < dy ? dy : dx);
++    return 0;
++}
++// <--- [zBuffer] List of mathematics commands
++
+ //
+ // ��s��main
+ //
+-- 
+2.1.0
+

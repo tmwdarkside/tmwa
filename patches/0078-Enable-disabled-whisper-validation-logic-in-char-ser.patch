@@ -1,0 +1,36 @@
+From 5206ff9386049a66ec58ad7914a17d111c3cb155 Mon Sep 17 00:00:00 2001
+From: Andrei Karas <akaras@inbox.ru>
+Date: Sat, 4 Dec 2010 03:05:48 +0200
+Subject: [PATCH 078/226] Enable disabled whisper validation logic in char
+ server.
+
+---
+ src/char/inter.c | 5 -----
+ 1 file changed, 5 deletions(-)
+
+diff --git a/src/char/inter.c b/src/char/inter.c
+index 4c5fb12..169d7f1 100644
+--- a/src/char/inter.c
++++ b/src/char/inter.c
+@@ -489,10 +489,6 @@ int mapif_parse_GMmessage (int fd)
+ // Wisp/page request to send
+ int mapif_parse_WisRequest (int fd __attribute__ ((unused)))
+ {
+-    // disable here buggy logic
+-
+-    return 0;
+-/*
+     struct WisData *wd;
+     static int wisid = 0;
+     int  index;
+@@ -558,7 +554,6 @@ int mapif_parse_WisRequest (int fd __attribute__ ((unused)))
+     }
+ 
+     return 0;
+-*/
+ }
+ 
+ // Wisp/page transmission result
+-- 
+2.1.0
+

@@ -1,0 +1,250 @@
+From 35d437ba2d869bcf8da13d313fe9bbfc995a47e6 Mon Sep 17 00:00:00 2001
+From: Andrei Karas <akaras@inbox.ru>
+Date: Mon, 27 Dec 2010 18:49:15 +0200
+Subject: [PATCH 148/226] Add initial support for translating strings.
+
+Implemented language files loading and translation function.
+---
+ src/map/Makefile |   7 +--
+ src/map/lang.c   | 137 +++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ src/map/lang.h   |  18 ++++++++
+ src/map/map.c    |   2 +
+ src/map/script.c |   1 +
+ 5 files changed, 162 insertions(+), 3 deletions(-)
+ create mode 100644 src/map/lang.c
+ create mode 100644 src/map/lang.h
+
+diff --git a/src/map/Makefile b/src/map/Makefile
+index da96d7d..8cee37a 100644
+--- a/src/map/Makefile
++++ b/src/map/Makefile
+@@ -11,7 +11,7 @@ COMMON_OBJ = ../common/core.o ../common/socket.o ../common/timer.o ../common/grf
+ 
+ LIBS = -lz -lm
+ 
+-map-server: obj/tmw.o obj/magic-interpreter-lexer.o obj/magic-interpreter-parser.o obj/magic-interpreter-base.o obj/magic-expr.o obj/magic-stmt.o obj/magic.o obj/map.o obj/chrif.o obj/clif.o obj/pc.o obj/npc.o obj/chat.o obj/path.o obj/itemdb.o obj/mob.o obj/script.o obj/storage.o obj/skill.o obj/skill-pools.o obj/atcommand.o obj/battle.o obj/intif.o obj/trade.o obj/party.o obj/guild.o $(COMMON_OBJ)
++map-server: obj/tmw.o obj/magic-interpreter-lexer.o obj/magic-interpreter-parser.o obj/magic-interpreter-base.o obj/magic-expr.o obj/magic-stmt.o obj/magic.o obj/lang.o obj/map.o obj/chrif.o obj/clif.o obj/pc.o obj/npc.o obj/chat.o obj/path.o obj/itemdb.o obj/mob.o obj/script.o obj/storage.o obj/skill.o obj/skill-pools.o obj/atcommand.o obj/battle.o obj/intif.o obj/trade.o obj/party.o obj/guild.o $(COMMON_OBJ)
+ 	$(CC) ${MAPPROFILE} -o ../../$@ $^ $(LIBS)
+ 
+ obj/%.o: %.c
+@@ -29,7 +29,8 @@ obj/magic-interpreter-base.o: magic-interpreter-base.c magic-expr-eval.h magic-i
+ obj/magic-expr.o: magic-expr.c magic-expr-eval.h magic-interpreter-aux.h magic-expr.h magic-interpreter.h chrif.h clif.h npc.h pc.h mob.h chat.h skill.h itemdb.h storage.h party.h atcommand.h ../common/core.h ../common/timer.h ../common/db.h ../common/grfio.h ../common/mmo.h
+ obj/magic-stmt.o: magic-stmt.c magic-expr-eval.h magic-interpreter-aux.h magic-expr.h magic-interpreter.h chrif.h clif.h npc.h pc.h mob.h chat.h skill.h itemdb.h storage.h party.h atcommand.h ../common/core.h ../common/timer.h ../common/db.h ../common/grfio.h ../common/mmo.h
+ obj/magic.o: magic.c magic.h magic-expr.h magic-interpreter.h chrif.h clif.h npc.h pc.h mob.h chat.h skill.h itemdb.h storage.h party.h atcommand.h ../common/core.h ../common/timer.h ../common/db.h ../common/grfio.h ../common/mmo.h
+-obj/map.o: map.c map.h chrif.h clif.h npc.h pc.h mob.h chat.h skill.h itemdb.h storage.h party.h atcommand.h ../common/core.h ../common/timer.h ../common/db.h ../common/grfio.h ../common/mmo.h
++obj/map.o: map.c map.h lang.c lang.h chrif.h clif.h npc.h pc.h mob.h chat.h skill.h itemdb.h storage.h party.h atcommand.h ../common/core.h ../common/timer.h ../common/db.h ../common/grfio.h ../common/mmo.h
++obj/lang.o: lang.c lang.h ../common/core.h ../common/timer.h ../common/db.h ../common/grfio.h ../common/mmo.h
+ obj/chrif.o: chrif.c map.h battle.h chrif.h clif.h intif.h pc.h npc.h ../common/socket.h ../common/timer.h ../common/mmo.h
+ obj/clif.o: magic.h clif.c map.h chrif.h clif.h mob.h intif.h pc.h npc.h itemdb.h chat.h script.h storage.h party.h guild.h atcommand.h atcommand.h ../common/socket.h ../common/timer.h ../common/mmo.h ../common/version.h tmw.h
+ obj/pc.o: pc.c map.h clif.h intif.h pc.h npc.h mob.h itemdb.h battle.h skill.h script.h party.h guild.h trade.h storage.h chat.h ../common/timer.h ../common/mmo.h ../common/db.h
+@@ -38,7 +39,7 @@ obj/chat.o: chat.c map.h clif.h pc.h chat.h ../common/db.h ../common/mmo.h
+ obj/path.o: path.c map.h battle.h ../common/mmo.h
+ obj/itemdb.o: itemdb.c map.h battle.h itemdb.h ../common/db.h ../common/grfio.h ../common/mmo.h
+ obj/mob.o: mob.c map.h clif.h intif.h pc.h mob.h skill.h battle.h npc.h itemdb.h ../common/timer.h ../common/socket.h ../common/mmo.h
+-obj/script.o: script.c itemdb.h map.h pc.h mob.h clif.h intif.h npc.h script.h storage.h skill.h battle.h ../common/timer.h ../common/socket.h ../common/db.h ../common/mmo.h ../common/lock.h
++obj/script.o: script.c lang.c lang.h itemdb.h map.h pc.h mob.h clif.h intif.h npc.h script.h storage.h skill.h battle.h ../common/timer.h ../common/socket.h ../common/db.h ../common/mmo.h ../common/lock.h
+ obj/storage.o: storage.c itemdb.h pc.h clif.h intif.h storage.h guild.h ../common/mmo.h ../common/db.h
+ obj/skill.o: skill.c skill.h map.h clif.h pc.h mob.h battle.h itemdb.h script.h ../common/timer.h ../common/mmo.h
+ obj/skill-pools.o: skill-pools.c skill.h map.h clif.h pc.h mob.h battle.h itemdb.h script.h ../common/timer.h ../common/mmo.h
+diff --git a/src/map/lang.c b/src/map/lang.c
+new file mode 100644
+index 0000000..3024f65
+--- /dev/null
++++ b/src/map/lang.c
+@@ -0,0 +1,137 @@
++#include "lang.h"
++
++#include <stdio.h>
++#include <stdlib.h>
++#include <string.h>
++#include <stdarg.h>
++#ifdef LCCWIN32
++#include <winsock.h>
++#else
++#include <netdb.h>
++#endif
++
++#include "strlib.h"
++#include "core.h"
++#include "timer.h"
++#include "db.h"
++#include "grfio.h"
++#include "malloc.h"
++
++#include "map.h"
++#include "chrif.h"
++#include "intif.h"
++#include "nullpo.h"
++#include "socket.h"
++
++#ifdef MEMWATCH
++#include "memwatch.h"
++#endif
++
++struct dbt *translate_db = NULL;
++char *lang_langs[100];
++int lang_num = 0;
++
++static int langsdb_readdb (void);
++static int langsdb_readlangs (void);
++
++void do_init_langs ()
++{
++    translate_db = strdb_init (100);
++
++    langsdb_readlangs ();
++    langsdb_readdb ();
++}
++
++static int langsdb_readlangs (void)
++{
++    FILE *fp;
++    lang_num = 0;
++    fp = fopen_ ("langs/langs.txt", "r");
++    if (fp == NULL)
++    {
++        printf ("can't read langs/langs.txt\n");
++        return 1;
++    }
++    char line[100];
++    char text[101];
++    while (fgets (line, 99, fp))
++    {
++        if (sscanf(line, "%99s\n", text) < 1)
++            continue;
++
++        lang_langs[lang_num] = strdup (text);
++        lang_num ++;
++    }
++    return 0;
++}
++
++static int langsdb_readdb (void)
++{
++    FILE *fp;
++    char line1[1020], line2[1020];
++    char text1[1020], text2[1020];
++    char filename[1000];
++    char **strings = NULL;
++    int *lng = NULL;
++    int i;
++    for (i = 0; i < lang_num; i ++)
++    {
++        strcpy (filename, "langs/lang_");
++        strcat (filename, lang_langs[i]);
++        strcat (filename, ".txt");
++
++        fp = fopen_ (filename, "r");
++        if (fp == NULL)
++        {
++            printf ("can't read %s\n", filename);
++            return 1;
++        }
++
++        while (fgets (line1, 1010, fp))
++        {
++            if (*line1 == 0 || !fgets (line2, 1010, fp) || *line2 == 0)
++                continue;
++
++            if (sscanf(line1, "%1000s\n", text1) < 1 || sscanf(line2, "%1000s\n", text2) < 1)
++                continue;
++
++            strings = strdb_search (translate_db, text1);
++            if (!strings)
++            {
++                strings = aCalloc (lang_num, sizeof(int*));
++                lng = aMalloc (sizeof(int));
++                *lng = i;
++                strings[0] = strdup (text1);
++                strdb_insert (translate_db, strdup (text1), strings);
++            }
++
++            strings[i] = strdup (text2);
++        }
++        fclose (fp);
++    }
++    return 0;
++}
++
++const char* lang_trans(const char *str, int lng)
++{
++    if (!str)
++        return 0;
++
++    if (lng < 0 || lng >= lang_num)
++        return str;
++
++    char **strings = strdb_search (translate_db, str);
++    if (!strings)
++    {
++        printf ("no translations for: %s\n", str);
++        return str;
++    }
++
++    if (!strings[lng])
++    {
++        printf ("no lang string (%d) for: %s\n", lang_langs[lng], str);
++        return str;
++    }
++
++    return strings[lng];
++}
+diff --git a/src/map/lang.h b/src/map/lang.h
+new file mode 100644
+index 0000000..2c1c2af
+--- /dev/null
++++ b/src/map/lang.h
+@@ -0,0 +1,18 @@
++// $Id: map.h,v 1.8 2004/09/25 11:39:17 MouseJstr Exp $
++#ifndef _LANG_H_
++#define _LANG_H_
++
++#include <stdio.h>
++#include <stdarg.h>
++#include <time.h>
++#include <sys/time.h>
++#include <netinet/in.h>
++#include "mmo.h"
++
++extern struct dbt *translate_db;
++
++void do_init_langs ();
++
++const char* lang_trans(const char *str, int lng);
++
++#endif
+diff --git a/src/map/map.c b/src/map/map.c
+index ec7a5de..5eadf8e 100644
+--- a/src/map/map.c
++++ b/src/map/map.c
+@@ -17,6 +17,7 @@
+ #include "malloc.h"
+ 
+ #include "map.h"
++#include "lang.h"
+ #include "chrif.h"
+ #include "clif.h"
+ #include "intif.h"
+@@ -2457,6 +2458,7 @@ int do_init (int argc, char *argv[])
+     add_timer_func_list (map_clearflooritem_timer,
+                          "map_clearflooritem_timer");
+ 
++    do_init_langs ();
+     do_init_chrif ();
+     do_init_clif ();
+     do_init_itemdb ();
+diff --git a/src/map/script.c b/src/map/script.c
+index c759126..9cf2c7a 100644
+--- a/src/map/script.c
++++ b/src/map/script.c
+@@ -21,6 +21,7 @@
+ #include "lock.h"
+ 
+ #include "atcommand.h"
++#include "lang.h"
+ #include "battle.h"
+ #include "chat.h"
+ #include "chrif.h"
+-- 
+2.1.0
+

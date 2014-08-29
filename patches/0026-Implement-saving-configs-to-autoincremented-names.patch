@@ -1,0 +1,494 @@
+From 6b6890c8c2ce45eecd163ba38df81a5bdb142cd4 Mon Sep 17 00:00:00 2001
+From: Andrei Karas <akaras@inbox.ru>
+Date: Wed, 17 Nov 2010 05:00:44 +0200
+Subject: [PATCH 026/226] Implement saving configs to autoincremented names.
+
+Allow protect db files against server crashes or hardware issues.
+
+New configuration parameters:
+db_count - numer of db copies. (default value 5)
+db_skip_count - how many times save db to current file before incrementing name
+
+Disadvantage: After server restart loadable db may have not lastest version.
+---
+ src/char/char.c        | 19 +++++++++++++++----
+ src/char/char.h        |  1 +
+ src/char/int_guild.c   |  9 +++++----
+ src/char/int_party.c   |  4 ++--
+ src/char/int_storage.c | 10 ++++++----
+ src/char/inter.c       | 19 +++++++++++++++++--
+ src/char/inter.h       |  2 ++
+ src/common/lock.c      | 25 ++++++++++++++++++-------
+ src/common/lock.h      |  4 ++--
+ src/login/login.c      | 31 +++++++++++++++++++++++++++----
+ src/map/script.c       | 19 +++++++++++++++----
+ 11 files changed, 110 insertions(+), 33 deletions(-)
+
+diff --git a/src/char/char.c b/src/char/char.c
+index f526200..24633bd 100644
+--- a/src/char/char.c
++++ b/src/char/char.c
+@@ -40,6 +40,8 @@ int  server_fd[MAX_MAP_SERVERS];
+ int  server_freezeflag[MAX_MAP_SERVERS];    // Map-server anti-freeze system. Counter. 5 ok, 4...0 freezed
+ int  anti_freeze_enable = 0;
+ int  ANTI_FREEZE_INTERVAL = 6;
++int index_db = 0;
++int temp_cnt = 0;
+ 
+ int  login_fd, char_fd;
+ char userid[24];
+@@ -782,7 +784,7 @@ void mmo_char_sync (void)
+     }
+ 
+     // Data save
+-    fp = lock_fopen (char_txt, &lock);
++    fp = lock_fopen (char_txt, &lock, &index_db);
+     if (fp == NULL)
+     {
+         printf ("WARNING: Server can't not save characters.\n");
+@@ -797,13 +799,13 @@ void mmo_char_sync (void)
+             fprintf (fp, "%s" RETCODE, line);
+         }
+         fprintf (fp, "%d\t%%newid%%" RETCODE, char_id_count);
+-        lock_fclose (fp, char_txt, &lock);
++        lock_fclose (fp, char_txt, &lock, &index_db);
+     }
+ 
+     // Data save (backup)
+     if (backup_txt_flag)
+     {                           // The backup_txt file was created because char deletion bug existed. Now it's finish and that take a lot of time to create a second file when there are a lot of characters. => option By [Yor]
+-        fp = lock_fopen (backup_txt, &lock);
++        fp = lock_fopen (backup_txt, &lock, &index_db);
+         if (fp == NULL)
+         {
+             printf
+@@ -820,7 +822,7 @@ void mmo_char_sync (void)
+             fprintf (fp, "%s" RETCODE, line);
+         }
+         fprintf (fp, "%d\t%%newid%%" RETCODE, char_id_count);
+-        lock_fclose (fp, backup_txt, &lock);
++        lock_fclose (fp, backup_txt, &lock, &index_db);
+     }
+ 
+     return;
+@@ -843,6 +845,15 @@ int mmo_char_sync_timer (int tid, unsigned int tick, int id, int data)
+         }
+     }
+ 
++    temp_cnt ++;
++    if (temp_cnt > db_skip_count)
++    {
++        temp_cnt = 0;
++        index_db ++;
++        if (index_db > db_count)
++            index_db = 0;
++    }
++
+     // This can take a lot of time. Fork a child to handle the work and return at once
+     // If we're unable to fork just continue running the function normally
+     if ((pid = fork ()) > 0)
+diff --git a/src/char/char.h b/src/char/char.h
+index cc64024..ca79616 100644
+--- a/src/char/char.h
++++ b/src/char/char.h
+@@ -28,5 +28,6 @@ int  mapif_send (int fd, unsigned char *buf, unsigned int len);
+ int  char_log (char *fmt, ...);
+ 
+ extern int autosave_interval;
++extern int index_db;
+ 
+ #endif
+diff --git a/src/char/int_guild.c b/src/char/int_guild.c
+index 49bb238..1c9d523 100644
+--- a/src/char/int_guild.c
++++ b/src/char/int_guild.c
+@@ -593,7 +593,7 @@ int inter_guild_save ()
+     FILE *fp;
+     int  lock;
+ 
+-    if ((fp = lock_fopen (guild_txt, &lock)) == NULL)
++    if ((fp = lock_fopen (guild_txt, &lock, &index_db)) == NULL)
+     {
+         printf ("int_guild: cant write [%s] !!! data is lost !!!\n",
+                 guild_txt);
+@@ -601,17 +601,18 @@ int inter_guild_save ()
+     }
+     numdb_foreach (guild_db, inter_guild_save_sub, fp);
+ //  fprintf(fp, "%d\t%%newid%%\n", guild_newid);
+-    lock_fclose (fp, guild_txt, &lock);
++    lock_fclose (fp, guild_txt, &lock, &index_db);
++
+ //  printf("int_guild: %s saved.\n", guild_txt);
+ 
+-    if ((fp = lock_fopen (castle_txt, &lock)) == NULL)
++    if ((fp = lock_fopen (castle_txt, &lock, &index_db)) == NULL)
+     {
+         printf ("int_guild: cant write [%s] !!! data is lost !!!\n",
+                 castle_txt);
+         return 1;
+     }
+     numdb_foreach (castle_db, inter_castle_save_sub, fp);
+-    lock_fclose (fp, castle_txt, &lock);
++    lock_fclose (fp, castle_txt, &lock, &index_db);
+ 
+     return 0;
+ }
+diff --git a/src/char/int_party.c b/src/char/int_party.c
+index fb9c3ca..7408810 100644
+--- a/src/char/int_party.c
++++ b/src/char/int_party.c
+@@ -157,7 +157,7 @@ int inter_party_save ()
+     FILE *fp;
+     int  lock;
+ 
+-    if ((fp = lock_fopen (party_txt, &lock)) == NULL)
++    if ((fp = lock_fopen (party_txt, &lock, &index_db)) == NULL)
+     {
+         printf ("int_party: cant write [%s] !!! data is lost !!!\n",
+                 party_txt);
+@@ -165,7 +165,7 @@ int inter_party_save ()
+     }
+     numdb_foreach (party_db, inter_party_save_sub, fp);
+ //  fprintf(fp, "%d\t%%newid%%\n", party_newid);
+-    lock_fclose (fp, party_txt, &lock);
++    lock_fclose (fp, party_txt, &lock, &index_db);
+ //  printf("int_party: %s saved.\n", party_txt);
+ 
+     return 0;
+diff --git a/src/char/int_storage.c b/src/char/int_storage.c
+index 47dff67..5b63110 100644
+--- a/src/char/int_storage.c
++++ b/src/char/int_storage.c
+@@ -384,15 +384,16 @@ int inter_storage_save ()
+     if (!storage_db)
+         return 1;
+ 
+-    if ((fp = lock_fopen (storage_txt, &lock)) == NULL)
++    if ((fp = lock_fopen (storage_txt, &lock, &index_db)) == NULL)
+     {
+         printf ("int_storage: cant write [%s] !!! data is lost !!!\n",
+                 storage_txt);
+         return 1;
+     }
+     numdb_foreach (storage_db, inter_storage_save_sub, fp);
+-    lock_fclose (fp, storage_txt, &lock);
++    lock_fclose (fp, storage_txt, &lock, &index_db);
+ //  printf("int_storage: %s saved.\n",storage_txt);
++
+     return 0;
+ }
+ 
+@@ -422,15 +423,16 @@ int inter_guild_storage_save ()
+     if (!guild_storage_db)
+         return 1;
+ 
+-    if ((fp = lock_fopen (guild_storage_txt, &lock)) == NULL)
++    if ((fp = lock_fopen (guild_storage_txt, &lock, &index_db)) == NULL)
+     {
+         printf ("int_storage: cant write [%s] !!! data is lost !!!\n",
+                 guild_storage_txt);
+         return 1;
+     }
+     numdb_foreach (guild_storage_db, inter_guild_storage_save_sub, fp);
+-    lock_fclose (fp, guild_storage_txt, &lock);
++    lock_fclose (fp, guild_storage_txt, &lock, &index_db);
+ //  printf("int_storage: %s saved.\n",guild_storage_txt);
++
+     return 0;
+ }
+ 
+diff --git a/src/char/inter.c b/src/char/inter.c
+index 19e1d83..3ab9726 100644
+--- a/src/char/inter.c
++++ b/src/char/inter.c
+@@ -29,6 +29,9 @@ struct accreg
+ };
+ 
+ int  party_share_level = 10;
++int  db_count = 5*2;
++// 10 minutes (if each 15 sec db saved)
++int  db_skip_count = 40;
+ 
+ // 送信パケット長リスト
+ int  inter_send_packet_length[] = {
+@@ -168,14 +171,14 @@ int inter_accreg_save ()
+     FILE *fp;
+     int  lock;
+ 
+-    if ((fp = lock_fopen (accreg_txt, &lock)) == NULL)
++    if ((fp = lock_fopen (accreg_txt, &lock, &index_db)) == NULL)
+     {
+         printf ("int_accreg: cant write [%s] !!! data is lost !!!\n",
+                 accreg_txt);
+         return 1;
+     }
+     numdb_foreach (accreg_db, inter_accreg_save_sub, fp);
+-    lock_fclose (fp, accreg_txt, &lock);
++    lock_fclose (fp, accreg_txt, &lock, &index_db);
+ //  printf("inter: %s saved.\n", accreg_txt);
+ 
+     return 0;
+@@ -241,6 +244,18 @@ int inter_config_read (const char *cfgName)
+         {
+             strncpy (inter_log_filename, w2, sizeof (inter_log_filename));
+         }
++        else if (strcmpi (w1, "db_count") == 0)
++        {
++            db_count = atoi (w2) * 2;
++            if (db_count < 0)
++                db_count = 0;
++        }
++        else if (strcmpi (w1, "db_skip_count") == 0)
++        {
++            db_skip_count = atoi (w2);
++            if (db_skip_count <= 0)
++                db_skip_count = 1;
++        }
+         else if (strcmpi (w1, "import") == 0)
+         {
+             inter_config_read (w2);
+diff --git a/src/char/inter.h b/src/char/inter.h
+index 7ad7d08..93fd4a3 100644
+--- a/src/char/inter.h
++++ b/src/char/inter.h
+@@ -14,6 +14,8 @@ int  inter_log (char *fmt, ...);
+ #define inter_cfgName "conf/inter_athena.conf"
+ 
+ extern int party_share_level;
++extern int db_count;
++extern int db_skip_count;
+ extern char inter_log_filename[1024];
+ 
+ #endif
+diff --git a/src/common/lock.c b/src/common/lock.c
+index 7409baf..2c48493 100644
+--- a/src/common/lock.c
++++ b/src/common/lock.c
+@@ -8,7 +8,7 @@
+ // （書き込みが終わるまで、旧ファイルを保管しておく）
+ 
+ // 新しいファイルの書き込み開始
+-FILE *lock_fopen (const char *filename, int *info)
++FILE *lock_fopen (const char *filename, int *info, int *cnt)
+ {
+     char newfile[512];
+     FILE *fp;
+@@ -25,18 +25,29 @@ FILE *lock_fopen (const char *filename, int *info)
+ }
+ 
+ // 旧ファイルを削除＆新ファイルをリネーム
+-int lock_fclose (FILE * fp, const char *filename, int *info)
++int lock_fclose (FILE * fp, const char *filename, int *info, int *cnt)
+ {
+     int  ret = 0;
+     char newfile[512];
+     if (fp != NULL)
+     {
+         ret = fclose_ (fp);
+-        sprintf (newfile, "%s_%d.tmp", filename, *info);
+-        remove (filename);
+-        // このタイミングで落ちると最悪。
+-        rename (newfile, filename);
+-        return ret;
++        if (cnt && (*cnt)%2)
++        {
++            char file2[512];
++            sprintf (newfile, "%s_%d.tmp", filename, *info);
++            sprintf (file2, "%s_%d", filename, (int)((*cnt)/2));
++            remove (file2);
++            rename (newfile, file2);
++            return ret;
++        }
++        else
++        {
++            sprintf (newfile, "%s_%d.tmp", filename, *info);
++            remove (filename);
++            rename (newfile, filename);
++            return ret;
++        }
+     }
+     else
+     {
+diff --git a/src/common/lock.h b/src/common/lock.h
+index 6175241..f0ea5be 100644
+--- a/src/common/lock.h
++++ b/src/common/lock.h
+@@ -1,7 +1,7 @@
+ #ifndef _LOCK_H_
+ #define _LOCK_H_
+ 
+-FILE *lock_fopen (const char *filename, int *info);
+-int  lock_fclose (FILE * fp, const char *filename, int *info);
++FILE *lock_fopen (const char *filename, int *info, int *cnt);
++int  lock_fclose (FILE * fp, const char *filename, int *info, int *cnt);
+ 
+ #endif
+diff --git a/src/login/login.c b/src/login/login.c
+index c397212..e40e4d3 100644
+--- a/src/login/login.c
++++ b/src/login/login.c
+@@ -43,6 +43,7 @@ int  subneti[4];
+ int  subnetmaski[4];
+ char update_host[128] = "";
+ char main_server[20] = "";
++int index_db = 0;
+ 
+ char account_filename[1024] = "save/account.txt";
+ char GM_account_filename[1024] = "conf/GM_account.txt";
+@@ -124,6 +125,9 @@ int  admin_state = 0;
+ char admin_pass[24] = "";
+ char gm_pass[64] = "";
+ int  level_new_gm = 60;
++int  db_count = 5*2;
++int  db_skip_count = 0;
++int  temp_cnt = 0;
+ 
+ static struct dbt *gm_account_db;
+ 
+@@ -1006,7 +1010,7 @@ void mmo_auth_sync (void)
+     }
+ 
+     // Data save
+-    fp = lock_fopen (account_filename, &lock);
++    fp = lock_fopen (account_filename, &lock, &index_db);
+     if (fp == NULL)
+         return;
+     fprintf (fp,
+@@ -1041,7 +1045,7 @@ void mmo_auth_sync (void)
+     }
+     fprintf (fp, "%d\t%%newid%%\n", account_id_count);
+ 
+-    lock_fclose (fp, account_filename, &lock);
++    lock_fclose (fp, account_filename, &lock, &index_db);
+ 
+     return;
+ }
+@@ -1065,6 +1069,16 @@ int check_auth_sync (int tid, unsigned int tick, int id, int data)
+         }
+     }
+ 
++    temp_cnt ++;
++    if (temp_cnt > db_skip_count)
++    {
++        temp_cnt = 0;
++        index_db ++;
++
++        if (index_db > db_count)
++            index_db = 0;
++    }
++
+     // This can take a lot of time. Fork a child to handle the work and return at once
+     // If we're unable to fork just continue running the function normally
+     if ((pid = fork ()) > 0)
+@@ -2710,6 +2724,7 @@ int parse_admin (int fd)
+                     return 0;
+                 WFIFOW (fd, 0) = 0x793f;
+                 WFIFOL (fd, 2) = -1;
++
+                 account_name = RFIFOP (fd, 2);
+                 account_name[23] = '\0';
+                 remove_control_chars (account_name);
+@@ -2742,7 +2757,7 @@ int parse_admin (int fd)
+                                 struct timeval tv;
+                                 if ((fp2 =
+                                      lock_fopen (GM_account_filename,
+-                                                 &lock)) != NULL)
++                                                 &lock, 0)) != NULL)
+                                 {
+                                     if ((fp =
+                                          fopen_ (GM_account_filename,
+@@ -2831,7 +2846,7 @@ int parse_admin (int fd)
+                                     }
+                                     if (lock_fclose
+                                         (fp2, GM_account_filename,
+-                                         &lock) == 0)
++                                         &lock, 0) == 0)
+                                     {
+                                         WFIFOL (fd, 2) = acc;
+                                         login_log
+@@ -4366,6 +4381,14 @@ int login_config_read (const char *cfgName)
+                 strncpy (admin_pass, w2, sizeof (admin_pass));
+                 admin_pass[sizeof (admin_pass) - 1] = '\0';
+             }
++            else if (strcmpi (w1, "db_count") == 0)
++            {
++                db_count = atoi(w2) * 2;
++            }
++            else if (strcmpi (w1, "db_skip_count") == 0)
++            {
++                db_skip_count = atoi(w2);
++            }
+             else if (strcmpi (w1, "ladminallowip") == 0)
+             {
+                 if (strcmpi (w2, "clear") == 0)
+diff --git a/src/map/script.c b/src/map/script.c
+index 58c4b33..5cb7c9f 100644
+--- a/src/map/script.c
++++ b/src/map/script.c
+@@ -68,6 +68,7 @@ static struct dbt *mapreg_db = NULL;
+ static struct dbt *mapregstr_db = NULL;
+ static int mapreg_dirty = -1;
+ char mapreg_txt[256] = "save/mapreg.txt";
++static int index_db = 0;
+ #define MAPREG_AUTOSAVE_INTERVAL	(10*1000)
+ 
+ static struct dbt *scriptlabel_db = NULL;
+@@ -103,6 +104,7 @@ static struct Script_Config
+     int  warn_cmd_mismatch_paramnum;
+     int  check_cmdcount;
+     int  check_gotocount;
++    int  db_count;
+ } script_config;
+ static int parse_cmd_if = 0;
+ static int parse_cmd;
+@@ -7917,12 +7919,16 @@ static int script_save_mapreg ()
+     FILE *fp;
+     int  lock;
+ 
+-    if ((fp = lock_fopen (mapreg_txt, &lock)) == NULL)
++    if ((fp = lock_fopen (mapreg_txt, &lock, &index_db)) == NULL)
+         return -1;
+     numdb_foreach (mapreg_db, script_save_mapreg_intsub, fp);
+     numdb_foreach (mapregstr_db, script_save_mapreg_strsub, fp);
+-    lock_fclose (fp, mapreg_txt, &lock);
++    lock_fclose (fp, mapreg_txt, &lock, &index_db);
+     mapreg_dirty = 0;
++
++    index_db ++;
++    if (index_db > script_config.db_count)
++        index_db = 0;
+     return 0;
+ }
+ 
+@@ -7973,6 +7979,7 @@ int script_config_read (char *cfgName)
+     script_config.warn_cmd_mismatch_paramnum = 1;
+     script_config.check_cmdcount = 8192;
+     script_config.check_gotocount = 512;
++    script_config.db_count = 5*2;
+ 
+     fp = fopen_ (cfgName, "r");
+     if (fp == NULL)
+@@ -7984,14 +7991,18 @@ int script_config_read (char *cfgName)
+     {
+         if (line[0] == '/' && line[1] == '/')
+             continue;
+-        i = sscanf (line, "%[^:]: %[^\r\n]", w1, w2);
++        i = sscanf (line, "%1000[^:]: %1000[^\r\n]", w1, w2);
+         if (i != 2)
+             continue;
+         if (strcmpi (w1, "refine_posword") == 0)
+         {
+             set_posword (w2);
+         }
+-        if (strcmpi (w1, "import") == 0)
++        else if (strcmpi (w1, "db_count") == 0)
++        {
++            script_config.db_count = atoi(w2) * 2;
++        }
++        else if (strcmpi (w1, "import") == 0)
+         {
+             script_config_read (w2);
+         }
+-- 
+2.1.0
+

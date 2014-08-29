@@ -1,0 +1,194 @@
+From 9e2c34fafc4d027e6909d8762f5ae9e00c7447a8 Mon Sep 17 00:00:00 2001
+From: Andrei Karas <akaras@inbox.ru>
+Date: Mon, 3 Jan 2011 02:56:41 +0200
+Subject: [PATCH 164/226] Add support for item attr field flags. Also update
+ item_db documentation.
+
+---
+ doc/item_db.txt   | 12 ++++++++++++
+ src/map/itemdb.h  | 11 +++++++++++
+ src/map/pc.c      | 15 +++++++++++----
+ src/map/storage.c | 18 ++++++++++++++++++
+ src/map/trade.c   |  7 +++++++
+ 5 files changed, 59 insertions(+), 4 deletions(-)
+
+diff --git a/doc/item_db.txt b/doc/item_db.txt
+index bbf95c7..bd6ad4a 100644
+--- a/doc/item_db.txt
++++ b/doc/item_db.txt
+@@ -4,6 +4,18 @@ Name: Name in english for displaying as output for @ and script commands.
+ 
+ Label: Name with spaces
+ 
++Attr: Item attribute flags
++    0   0x0000   0000 0000 0000 0000   All default
++    1   0x0001   0000 0000 0000 0001   Dont drop
++    2   0x0002   0000 0000 0000 0010   Dont trade
++    4   0x0004   0000 0000 0000 0100   Dont remove on use (same as Type 2)
++    8   0x0008   0000 0000 0000 1000   Dont move to storage
++   16   0x0010   0000 0000 0001 0000   Dont move to cart
++   32   0x0020   0000 0000 0010 0000   Dont use
++   64   0x0040   0000 0000 0100 0000   Dont equip
++  128   0x0080   0000 0000 1000 0000   Dont remove in magic use
++  256   0x0100   0000 0001 0000 0000   Dont move to guild storage
++
+ Type: 
+     0   Usable item (after using removed).
+     2   Usable item.
+diff --git a/src/map/itemdb.h b/src/map/itemdb.h
+index 49f64d3..fefdfea 100644
+--- a/src/map/itemdb.h
++++ b/src/map/itemdb.h
+@@ -4,6 +4,16 @@
+ 
+ #include "map.h"
+ 
++#define ITEM_ATTR_DONTDROP 1
++#define ITEM_ATTR_DONTTRADE 2
++#define ITEM_ATTR_DONTREMOVE 4
++#define ITEM_ATTR_DONTMOVETOSTORAGE 8
++#define ITEM_ATTR_DONTMOVETOCART 16
++#define ITEM_ATTR_DONTUSE 32
++#define ITEM_ATTR_DONTEQUIP 64
++#define ITEM_ATTR_DONTREMOVEMAGIC 128
++#define ITEM_ATTR_DONTMOVETOGSTORAGE 256
++
+ struct item_data
+ {
+     int  nameid;
+@@ -50,6 +60,7 @@ struct random_item_data
+ struct item_data *itemdb_searchname (const char *name);
+ struct item_data *itemdb_search (int nameid);
+ struct item_data *itemdb_exists (int nameid);
++#define itemdb_attr(n) itemdb_search(n)->attr
+ #define itemdb_type(n) itemdb_search(n)->type
+ #define itemdb_atk(n) itemdb_search(n)->atk
+ #define itemdb_def(n) itemdb_search(n)->def
+diff --git a/src/map/pc.c b/src/map/pc.c
+index d99bd15..761ac1c 100644
+--- a/src/map/pc.c
++++ b/src/map/pc.c
+@@ -3948,12 +3948,14 @@ int pc_dropitem (struct map_session_data *sd, int n, int amount)
+     if (amount <= 0)
+         return 0;
+ 
+-    pc_unequipinvyitem (sd, n, 0);
+-
+     if (sd->status.inventory[n].nameid <= 0 ||
+         sd->status.inventory[n].amount < amount ||
+-        sd->trade_partner != 0 || sd->status.inventory[n].amount <= 0)
++        sd->trade_partner != 0 || sd->status.inventory[n].amount <= 0 ||
++        (itemdb_attr (sd->status.inventory[n].nameid) & ITEM_ATTR_DONTDROP))
+         return 1;
++
++    pc_unequipinvyitem (sd, n, 0);
++
+     map_addflooritem (&sd->status.inventory[n], amount, sd->bl.m, sd->bl.x,
+                       sd->bl.y, NULL, NULL, NULL, 0);
+     pc_delitem (sd, n, amount, 0);
+@@ -4123,7 +4125,8 @@ int pc_useitem (struct map_session_data *sd, int n)
+ 
+         run_script (sd->inventory_data[n]->use_script, 0, sd->bl.id, 0);
+ 
+-        if (itemdb_type (sd->status.inventory[n].nameid) != 2)
++        if (itemdb_type (sd->status.inventory[n].nameid) != 2 &&
++            !(itemdb_attr (sd->status.inventory[n].nameid) && ITEM_ATTR_DONTREMOVE))
+         {
+             clif_useitemack (sd, n, amount - 1, 1);
+             pc_delitem (sd, n, 1, 1);
+@@ -4249,6 +4252,10 @@ int pc_putitemtocart (struct map_session_data *sd, int idx, int amount)
+         return 1;
+     if (item_data->nameid == 0 || item_data->amount < amount)
+         return 1;
++
++    if (itemdb_attr (sd->status.inventory[idx].nameid) & ITEM_ATTR_DONTMOVETOCART)
++        return 1;
++
+     if (pc_cart_additem (sd, item_data, amount) == 0)
+         return pc_delitem (sd, idx, amount, 0);
+ 
+diff --git a/src/map/storage.c b/src/map/storage.c
+index d6c60e5..0723d69 100644
+--- a/src/map/storage.c
++++ b/src/map/storage.c
+@@ -278,6 +278,9 @@ int storage_storageadd (struct map_session_data *sd, int index, int amount)
+     if (amount < 1 || amount > sd->status.inventory[index].amount)
+         return 0;
+ 
++    if (itemdb_attr (sd->status.inventory[index].nameid) & ITEM_ATTR_DONTMOVETOSTORAGE)
++        return 0;
++
+ //  log_tostorage(sd, index, 0);
+     if (storage_additem (sd, stor, &sd->status.inventory[index], amount) == 0)
+     {
+@@ -342,6 +345,9 @@ int storage_storageaddfromcart (struct map_session_data *sd, int index,
+     if (amount < 1 || amount > sd->status.cart[index].amount)
+         return 0;
+ 
++    if (itemdb_attr (sd->status.inventory[index].nameid) & ITEM_ATTR_DONTMOVETOSTORAGE)
++        return 0;
++
+     if (storage_additem (sd, stor, &sd->status.cart[index], amount) == 0)
+         pc_cart_delitem (sd, index, amount, 0);
+ 
+@@ -372,6 +378,9 @@ int storage_storagegettocart (struct map_session_data *sd, int index,
+     if (amount < 1 || amount > stor->storage_[index].amount)
+         return 0;
+ 
++    if (itemdb_attr (sd->status.inventory[index].nameid) & ITEM_ATTR_DONTMOVETOCART)
++        return 0;
++
+     if (pc_cart_additem (sd, &stor->storage_[index], amount) == 0)
+         storage_delitem (sd, stor, index, amount);
+ 
+@@ -644,6 +653,9 @@ int storage_guild_storageadd (struct map_session_data *sd, int index,
+     if (amount < 1 || amount > sd->status.inventory[index].amount)
+         return 0;
+ 
++    if (itemdb_attr (sd->status.inventory[index].nameid) & ITEM_ATTR_DONTMOVETOGSTORAGE)
++        return 0;
++
+ //  log_tostorage(sd, index, 1);
+     if (guild_storage_additem (sd, stor, &sd->status.inventory[index], amount)
+         == 0)
+@@ -702,6 +714,9 @@ int storage_guild_storageaddfromcart (struct map_session_data *sd, int index,
+     if (amount < 1 || amount > sd->status.cart[index].amount)
+         return 0;
+ 
++    if (itemdb_attr (sd->status.inventory[index].nameid) & ITEM_ATTR_DONTMOVETOGSTORAGE)
++        return 0;
++
+     if (guild_storage_additem (sd, stor, &sd->status.cart[index], amount) ==
+         0)
+         pc_cart_delitem (sd, index, amount, 0);
+@@ -729,6 +744,9 @@ int storage_guild_storagegettocart (struct map_session_data *sd, int index,
+     if (amount < 1 || amount > stor->storage_[index].amount)
+         return 0;
+ 
++    if (itemdb_attr (sd->status.inventory[index].nameid) & ITEM_ATTR_DONTMOVETOCART)
++        return 0;
++
+     if (pc_cart_additem (sd, &stor->storage_[index], amount) == 0)
+         guild_storage_delitem (sd, stor, index, amount);
+ 
+diff --git a/src/map/trade.c b/src/map/trade.c
+index a2c7a97..a8f2a83 100644
+--- a/src/map/trade.c
++++ b/src/map/trade.c
+@@ -129,6 +129,13 @@ void trade_tradeadditem (struct map_session_data *sd, int index, int amount)
+             int  c;
+             int  i;
+ 
++            if (itemdb_attr (sd->status.inventory[index - 2].nameid) & ITEM_ATTR_DONTTRADE)
++            {
++                clif_tradeitemok (sd, index, 0, 3); //fail to add item -- cant trade this item
++                amount = 0;
++                return;
++            }
++
+             // determine free slots of receiver
+             for (i = 0; i < MAX_INVENTORY; i++)
+             {
+-- 
+2.1.0
+

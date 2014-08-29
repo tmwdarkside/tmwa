@@ -1,0 +1,28 @@
+From eb11e0d3ed06c78c51654ca481ca8a1b5a010e74 Mon Sep 17 00:00:00 2001
+From: Andrei Karas <akaras@inbox.ru>
+Date: Sat, 18 Dec 2010 01:49:47 +0200
+Subject: [PATCH 114/226] Remove some useless unused attributes in atcommand.c
+
+---
+ src/map/atcommand.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/src/map/atcommand.c b/src/map/atcommand.c
+index 18fed5f..bc9b97b 100644
+--- a/src/map/atcommand.c
++++ b/src/map/atcommand.c
+@@ -2781,9 +2781,9 @@ atcommand_chardye (const int fd __attribute__ ((unused)), struct map_session_dat
+  *------------------------------------------
+  */
+ int atcommand_hair_style (const int fd __attribute__ ((unused)),
+-                          struct map_session_data *sd __attribute__ ((unused)),
++                          struct map_session_data *sd,
+                           const char *command __attribute__ ((unused)),
+-                          const char *message __attribute__ ((unused)))
++                          const char *message)
+ {
+     int  hair_style = 0;
+     char output[200];
+-- 
+2.1.0
+

@@ -1,0 +1,571 @@
+From 2a8ecb7bd0b63a10edee92a2e0ce779a1973e1e8 Mon Sep 17 00:00:00 2001
+From: Andrei Karas <akaras@inbox.ru>
+Date: Tue, 21 Dec 2010 16:18:41 +0200
+Subject: [PATCH 130/226] Replace most strncpy to safestrncpy.
+
+---
+ src/char/char.c      |  9 +++-----
+ src/char/int_party.c |  2 +-
+ src/common/strlib.c  |  2 +-
+ src/login/login.c    | 63 ++++++++++++++++++++++------------------------------
+ src/map/chrif.c      |  5 +++--
+ src/map/clif.c       | 18 +++++++++++----
+ src/map/guild.c      |  4 ++--
+ src/map/npc.c        | 10 ++++-----
+ src/map/party.c      |  4 ++--
+ src/map/pc.c         |  7 +++---
+ src/map/script.c     | 16 ++++++-------
+ src/map/tmw.c        |  3 ++-
+ 12 files changed, 70 insertions(+), 73 deletions(-)
+
+diff --git a/src/char/char.c b/src/char/char.c
+index e1c7e4d..1e0e82a 100644
+--- a/src/char/char.c
++++ b/src/char/char.c
+@@ -3019,8 +3019,7 @@ int search_mapserver (char *map)
+     int  temp_map_len;
+ 
+ //  printf("Searching the map-server for map '%s'... ", map);
+-    strncpy (temp_map, map, sizeof (temp_map));
+-    temp_map[sizeof (temp_map) - 1] = '\0';
++    safestrncpy (temp_map, map, sizeof (temp_map));
+     if (strchr (temp_map, '.') != NULL)
+         temp_map[strchr (temp_map, '.') - temp_map + 1] = '\0'; // suppress the '.gat', but conserve the '.' to be sure of the name of the map
+ 
+@@ -3857,8 +3856,7 @@ int lan_config_read (const char *lancfgName)
+             }
+             else
+             {
+-                strncpy (lan_map_ip, w2, sizeof (lan_map_ip));
+-                lan_map_ip[sizeof (lan_map_ip) - 1] = 0;
++                safestrncpy (lan_map_ip, w2, sizeof (lan_map_ip));
+             }
+             printf ("LAN IP of map-server: %s.\n", lan_map_ip);
+         }
+@@ -3965,8 +3963,7 @@ int char_config_read (const char *cfgName)
+         {
+             if (strlen (w2) >= 4)
+             {
+-                strncpy (wisp_server_name, w2, sizeof (wisp_server_name));
+-                wisp_server_name[sizeof (wisp_server_name) - 1] = '\0';
++                safestrncpy (wisp_server_name, w2, sizeof (wisp_server_name));
+             }
+         }
+         else if (strcmpi (w1, "login_ip") == 0)
+diff --git a/src/char/int_party.c b/src/char/int_party.c
+index bb2f160..14abb3f 100644
+--- a/src/char/int_party.c
++++ b/src/char/int_party.c
+@@ -83,7 +83,7 @@ int inter_party_fromstr (char *str, struct party *p)
+ 
+         m->account_id = tmp_int[0];
+         m->leader = tmp_int[1];
+-        strncpy (m->name, tmp_str, sizeof (m->name));
++        safestrncpy (m->name, tmp_str, sizeof (m->name));
+ //      printf(" %d %d [%s]\n", tmp_int[0], tmp_int[1], tmp_str);
+ 
+         for (j = 0; j < 2 && str != NULL; j++)
+diff --git a/src/common/strlib.c b/src/common/strlib.c
+index 0ac6413..84fd8fa 100644
+--- a/src/common/strlib.c
++++ b/src/common/strlib.c
+@@ -313,7 +313,7 @@ char* safestrncpy(char* dst, const char* src, size_t n)
+ {
+ 	char* ret;
+ 	ret = strncpy(dst, src, n);
+-	if( ret != NULL )
++	if( ret != NULL && n > 0)
+ 		ret[n - 1] = '\0';
+ 	return ret;
+ }
+diff --git a/src/login/login.c b/src/login/login.c
+index 5dbea32..6ba6a59 100644
+--- a/src/login/login.c
++++ b/src/login/login.c
+@@ -18,6 +18,7 @@
+ #include <netdb.h>
+ #include <sys/wait.h>
+ 
++#include "strlib.h"
+ #include "core.h"
+ #include "socket.h"
+ #include "timer.h"
+@@ -689,11 +690,11 @@ int mmo_auth_init (void)
+ 
+             auth_dat[auth_num].account_id = account_id;
+ 
+-            strncpy (auth_dat[auth_num].userid, userid, 24);
++            safestrncpy (auth_dat[auth_num].userid, userid, 24);
+ 
+             memo[254] = '\0';
+             remove_control_chars (memo);
+-            strncpy (auth_dat[auth_num].memo, memo, 255);
++            safestrncpy (auth_dat[auth_num].memo, memo, 255);
+ 
+             pass[39] = '\0';
+             remove_control_chars (pass);
+@@ -709,7 +710,7 @@ int mmo_auth_init (void)
+ 
+             lastlogin[23] = '\0';
+             remove_control_chars (lastlogin);
+-            strncpy (auth_dat[auth_num].lastlogin, lastlogin, 24);
++            safestrncpy (auth_dat[auth_num].lastlogin, lastlogin, 24);
+ 
+             auth_dat[auth_num].sex = (sex == 'S'
+                                       || sex == 's') ? 2 : (sex == 'M'
+@@ -738,18 +739,18 @@ int mmo_auth_init (void)
+             else
+             {
+                 remove_control_chars (email);
+-                strncpy (auth_dat[auth_num].email, email, 40);
++                safestrncpy (auth_dat[auth_num].email, email, 40);
+             }
+ 
+             error_message[19] = '\0';
+             remove_control_chars (error_message);
+             if (error_message[0] == '\0' || state != 7)
+             {                   // 7, because state is packet 0x006a value + 1
+-                strncpy (auth_dat[auth_num].error_message, "-", 20);
++                safestrncpy (auth_dat[auth_num].error_message, "-", 20);
+             }
+             else
+             {
+-                strncpy (auth_dat[auth_num].error_message, error_message, 20);
++                safestrncpy (auth_dat[auth_num].error_message, error_message, 20);
+             }
+ 
+             if (i == 13)
+@@ -874,11 +875,11 @@ int mmo_auth_init (void)
+ 
+             auth_dat[auth_num].account_id = account_id;
+ 
+-            strncpy (auth_dat[auth_num].userid, userid, 24);
++            safestrncpy (auth_dat[auth_num].userid, userid, 24);
+ 
+             lastlogin[23] = '\0';
+             remove_control_chars (lastlogin);
+-            strncpy (auth_dat[auth_num].lastlogin, lastlogin, 24);
++            safestrncpy (auth_dat[auth_num].lastlogin, lastlogin, 24);
+ 
+             auth_dat[auth_num].sex = (sex == 'S'
+                                       || sex == 's') ? 2 : (sex == 'M'
+@@ -912,7 +913,7 @@ int mmo_auth_init (void)
+             auth_dat[auth_num].ban_until_time = 0;
+             auth_dat[auth_num].connect_until_time = 0;
+             strncpy (auth_dat[auth_num].last_ip, "-", 16);
+-            strncpy (auth_dat[auth_num].memo, "!", 255);
++            safestrncpy (auth_dat[auth_num].memo, "!", 255);
+ 
+             for (j = 0; j < ACCOUNT_REG2_NUM; j++)
+             {
+@@ -931,7 +932,7 @@ int mmo_auth_init (void)
+                 }
+                 str[31] = '\0';
+                 remove_control_chars (str);
+-                strncpy (auth_dat[auth_num].account_reg2[j].str, str, 32);
++                safestrncpy (auth_dat[auth_num].account_reg2[j].str, str, 32);
+                 auth_dat[auth_num].account_reg2[j].value = v;
+             }
+             auth_dat[auth_num].account_reg2_num = j;
+@@ -1235,8 +1236,7 @@ int mmo_auth_new (struct mmo_account *account, char sex, char *email)
+ 
+     auth_dat[i].account_id = account_id_count++;
+ 
+-    strncpy (auth_dat[i].userid, account->userid, 24);
+-    auth_dat[i].userid[23] = '\0';
++    safestrncpy (auth_dat[i].userid, account->userid, 24);
+ 
+     strcpy(auth_dat[i].pass, MD5_saltcrypt(account->passwd, make_salt()));
+     auth_dat[i].pass[39] = '\0';
+@@ -1252,9 +1252,9 @@ int mmo_auth_new (struct mmo_account *account, char sex, char *email)
+     if (e_mail_check (email) == 0)
+         strncpy (auth_dat[i].email, "a@a.com", 40);
+     else
+-        strncpy (auth_dat[i].email, email, 40);
++        safestrncpy (auth_dat[i].email, email, 40);
+ 
+-    strncpy (auth_dat[i].error_message, "-", 20);
++    safestrncpy (auth_dat[i].error_message, "-", 20);
+ 
+     auth_dat[i].ban_until_time = 0;
+ 
+@@ -3078,7 +3078,7 @@ int parse_admin (int fd)
+                 {
+                     if (auth_dat[i].account_id == RFIFOL (fd, 2))
+                     {
+-                        strncpy (WFIFOP (fd, 6), auth_dat[i].userid, 24);
++                        safestrncpy (WFIFOP (fd, 6), auth_dat[i].userid, 24);
+                         login_log
+                             ("'ladmin': Request (by id) of an account name (account: %s, id: %d, ip: %s)"
+                              RETCODE, auth_dat[i].userid, RFIFOL (fd, 2), ip);
+@@ -3090,7 +3090,7 @@ int parse_admin (int fd)
+                     login_log
+                         ("'ladmin': Name request (by id) of an unknown account (id: %d, ip: %s)"
+                          RETCODE, RFIFOL (fd, 2), ip);
+-                    strncpy (WFIFOP (fd, 6), "", 24);
++                    safestrncpy (WFIFOP (fd, 6), "", 24);
+                 }
+                 WFIFOSET (fd, 30);
+                 RFIFOSKIP (fd, 6);
+@@ -3545,7 +3545,7 @@ int parse_admin (int fd)
+                     login_log
+                         ("'ladmin': Attempt to obtain information (by the id) of an unknown account (id: %d, ip: %s)"
+                          RETCODE, RFIFOL (fd, 2), ip);
+-                    strncpy (WFIFOP (fd, 7), "", 24);
++                    safestrncpy (WFIFOP (fd, 7), "", 24);
+                     WFIFOW (fd, 148) = 0;
+                     WFIFOSET (fd, 150);
+                 }
+@@ -4331,8 +4331,7 @@ int login_lan_config_read (const char *lancfgName)
+             }
+             else
+             {
+-                strncpy (lan_char_ip, w2, sizeof (lan_char_ip));
+-                lan_char_ip[sizeof (lan_char_ip) - 1] = '\0';
++                safestrncpy (lan_char_ip, w2, sizeof (lan_char_ip));
+             }
+             printf ("LAN IP of char-server: %s.\n", lan_char_ip);
+         }
+@@ -4446,8 +4445,7 @@ int login_config_read (const char *cfgName)
+             }
+             else if (strcmpi (w1, "admin_pass") == 0)
+             {
+-                strncpy (admin_pass, w2, sizeof (admin_pass));
+-                admin_pass[sizeof (admin_pass) - 1] = '\0';
++                safestrncpy (admin_pass, w2, sizeof (admin_pass));
+             }
+             else if (strcmpi (w1, "db_count") == 0)
+             {
+@@ -4502,8 +4500,7 @@ int login_config_read (const char *cfgName)
+             }
+             else if (strcmpi (w1, "gm_pass") == 0)
+             {
+-                strncpy (gm_pass, w2, sizeof (gm_pass));
+-                gm_pass[sizeof (gm_pass) - 1] = '\0';
++                safestrncpy (gm_pass, w2, sizeof (gm_pass));
+             }
+             else if (strcmpi (w1, "level_new_gm") == 0)
+             {
+@@ -4519,14 +4516,12 @@ int login_config_read (const char *cfgName)
+             }
+             else if (strcmpi (w1, "account_filename") == 0)
+             {
+-                strncpy (account_filename, w2, sizeof (account_filename));
+-                account_filename[sizeof (account_filename) - 1] = '\0';
++                safestrncpy (account_filename, w2, sizeof (account_filename));
+             }
+             else if (strcmpi (w1, "gm_account_filename") == 0)
+             {
+-                strncpy (GM_account_filename, w2,
++                safestrncpy (GM_account_filename, w2,
+                          sizeof (GM_account_filename));
+-                GM_account_filename[sizeof (GM_account_filename) - 1] = '\0';
+             }
+             else if (strcmpi (w1, "gm_account_filename_check_timer") == 0)
+             {
+@@ -4534,16 +4529,12 @@ int login_config_read (const char *cfgName)
+             }
+             else if (strcmpi (w1, "login_log_filename") == 0)
+             {
+-                strncpy (login_log_filename, w2, sizeof (login_log_filename));
+-                login_log_filename[sizeof (login_log_filename) - 1] = '\0';
++                safestrncpy (login_log_filename, w2, sizeof (login_log_filename));
+             }
+             else if (strcmpi (w1, "login_log_unknown_packets_filename") == 0)
+             {
+-                strncpy (login_log_unknown_packets_filename, w2,
++                safestrncpy (login_log_unknown_packets_filename, w2,
+                          sizeof (login_log_unknown_packets_filename));
+-                login_log_unknown_packets_filename[sizeof
+-                                                   (login_log_unknown_packets_filename)
+-                                                   - 1] = '\0';
+             }
+             else if (strcmpi (w1, "save_unknown_packets") == 0)
+             {
+@@ -4719,13 +4710,11 @@ int login_config_read (const char *cfgName)
+             }
+             else if (strcmpi (w1, "update_host") == 0)
+             {
+-                strncpy (update_host, w2, sizeof (update_host));
+-                update_host[sizeof (update_host) - 1] = '\0';
++                safestrncpy (update_host, w2, sizeof (update_host));
+             }
+             else if (strcmpi (w1, "main_server") == 0)
+             {
+-                strncpy (main_server, w2, sizeof (main_server));
+-                main_server[sizeof (main_server) - 1] = '\0';
++                safestrncpy (main_server, w2, sizeof (main_server));
+             }
+         }
+     }
+diff --git a/src/map/chrif.c b/src/map/chrif.c
+index 705b5fc..bbb4b05 100644
+--- a/src/map/chrif.c
++++ b/src/map/chrif.c
+@@ -13,6 +13,7 @@
+ #include <sys/types.h>
+ #include <time.h>
+ 
++#include "strlib.h"
+ #include "socket.h"
+ #include "timer.h"
+ #include "map.h"
+@@ -57,8 +58,8 @@ void chrif_setuserid (char *id)
+         return;
+     }
+ 
+-    strncpy (userid, id, sizeof(userid)-1);
+-    userid[sizeof(userid)-1] = '\0';
++    safestrncpy (userid, id, sizeof(userid));
++//    userid[sizeof(userid)-1] = '\0';
+ }
+ 
+ /*==========================================
+diff --git a/src/map/clif.c b/src/map/clif.c
+index 38ed2c4..0e578fc 100644
+--- a/src/map/clif.c
++++ b/src/map/clif.c
+@@ -25,6 +25,7 @@
+ #include "nullpo.h"
+ #include "md5calc.h"
+ 
++#include "strlib.h"
+ #include "atcommand.h"
+ #include "battle.h"
+ #include "chat.h"
+@@ -7774,8 +7775,11 @@ void clif_parse_GMmessage (int fd, struct map_session_data *sd)
+     if ((battle_config.atc_gmonly == 0 || pc_isGM (sd)) &&
+         (pc_isGM (sd) >= get_atcommand_level (AtCommand_Broadcast)))
+     {
+-        strncpy (m, RFIFOP (fd, 4), RFIFOW (fd, 2) - 4);
+-        m[RFIFOW (fd, 2) - 4] = 0;
++        int sz = RFIFOW (fd, 2) - 4;
++        if (sz > 512)
++            sz = 512;
++        safestrncpy (m, RFIFOP (fd, 4), sz);
++//        m[sz] = 0;
+         log_atcommand (sd, "/announce %s", m);
+ 
+         memset (output, '\0', sizeof (output));
+@@ -8479,8 +8483,14 @@ void clif_parse_NpcStringInput (int fd, struct map_session_data *sd)
+     }
+ 
+     if (len > 0)
+-        strncpy (sd->npc_str, RFIFOP (fd, 8), len);
+-    sd->npc_str[len] = '\0';
++    {
++        safestrncpy (sd->npc_str, RFIFOP (fd, 8), len);
++//        sd->npc_str[len] = '\0';
++    }
++    else
++    {
++        sd->npc_str[0] = '\0';
++    }
+ 
+     map_scriptcont (sd, RFIFOL (fd, 4));
+ }
+diff --git a/src/map/guild.c b/src/map/guild.c
+index 8af83b4..59f01f7 100644
+--- a/src/map/guild.c
++++ b/src/map/guild.c
+@@ -3,6 +3,7 @@
+ #include <stdlib.h>
+ #include <string.h>
+ 
++#include "strlib.h"
+ #include "guild.h"
+ #include "storage.h"
+ #include "db.h"
+@@ -352,8 +353,7 @@ int guild_create (struct map_session_data *sd, char *name)
+     nullpo_retr (0, sd);
+     nullpo_retr (0, name);
+ 
+-    strncpy (pname, name, 24);
+-    pname[23] = '\0';
++    safestrncpy (pname, name, 24);
+     tmw_TrimStr (pname);
+ 
+     /* The guild name is empty/invalid. */
+diff --git a/src/map/npc.c b/src/map/npc.c
+index e63c456..c32a88d 100644
+--- a/src/map/npc.c
++++ b/src/map/npc.c
+@@ -10,6 +10,7 @@
+ #include "nullpo.h"
+ #include "timer.h"
+ 
++#include "strlib.h"
+ #include "battle.h"
+ #include "clif.h"
+ #include "db.h"
+@@ -813,8 +814,7 @@ int npc_event (struct map_session_data *sd, const char *eventname,
+         {
+ //          if (battle_config.etc_log)
+ //              printf("npc_event: enqueue\n");
+-            strncpy (sd->eventqueue[i], eventname, 50);
+-            sd->eventqueue[i][49] = '\0';
++            safestrncpy (sd->eventqueue[i], eventname, 50);
+         }
+         return 1;
+     }
+@@ -2024,7 +2024,7 @@ static int npc_parse_function (char *w1, char *w2, char *w3, char *w4,
+ 
+     p = (char *) aCalloc (50, sizeof (char));
+ 
+-    strncpy (p, w3, 49);
++    safestrncpy (p, w3, 49);
+     strdb_insert (script_get_userfunc_db (), p, script);
+ 
+ //  label_db=script_get_label_db();
+@@ -2341,8 +2341,8 @@ struct npc_data *npc_spawn_text (int m, int x, int y,
+     retval->bl.type = BL_NPC;
+     retval->bl.subtype = MESSAGE;
+ 
+-    strncpy (retval->name, name, 23);
+-    strncpy (retval->exname, name, 23);
++    safestrncpy (retval->name, name, 24);
++    safestrncpy (retval->exname, name, 24);
+     retval->name[15] = 0;
+     retval->exname[15] = 0;
+     retval->u.message = message ? strdup (message) : NULL;
+diff --git a/src/map/party.c b/src/map/party.c
+index 62ecdef..a7bb3a9 100644
+--- a/src/map/party.c
++++ b/src/map/party.c
+@@ -3,6 +3,7 @@
+ #include <stdlib.h>
+ #include <string.h>
+ 
++#include "strlib.h"
+ #include "party.h"
+ #include "db.h"
+ #include "timer.h"
+@@ -91,8 +92,7 @@ int party_create (struct map_session_data *sd, char *name)
+     char pname[24];
+     nullpo_retr (0, sd);
+ 
+-    strncpy (pname, name, 24);
+-    pname[23] = '\0';
++    safestrncpy (pname, name, 24);
+     tmw_TrimStr (pname);
+ 
+     /* The party name is empty/invalid. */
+diff --git a/src/map/pc.c b/src/map/pc.c
+index acc82b0..4e56f8c 100644
+--- a/src/map/pc.c
++++ b/src/map/pc.c
+@@ -12,6 +12,7 @@
+ #include "malloc.h"
+ #include "nullpo.h"
+ 
++#include "strlib.h"
+ #include "atcommand.h"
+ #include "battle.h"
+ #include "chat.h"
+@@ -7727,8 +7728,7 @@ int pc_addeventtimer (struct map_session_data *sd, int tick, const char *name)
+     if (i < MAX_EVENTTIMER)
+     {
+         char *evname = (char *) aCalloc (24, sizeof (char));
+-        strncpy (evname, name, 24);
+-        evname[23] = '\0';
++        safestrncpy (evname, name, 24);
+         sd->eventtimer[i] = add_timer (gettick () + tick,
+                                        pc_eventtimer, sd->bl.id,
+                                        (int) evname);
+@@ -8905,8 +8905,7 @@ int pc_setsavepoint (struct map_session_data *sd, char *mapname, int x, int y)
+     nullpo_retr (0, sd);
+     nullpo_retr (0, mapname);
+ 
+-    strncpy (sd->status.save_point.map, mapname, 23);
+-    sd->status.save_point.map[23] = '\0';
++    safestrncpy (sd->status.save_point.map, mapname, 24);
+     sd->status.save_point.x = x;
+     sd->status.save_point.y = y;
+ 
+diff --git a/src/map/script.c b/src/map/script.c
+index 0f19c63..9ad8f9c 100644
+--- a/src/map/script.c
++++ b/src/map/script.c
+@@ -3565,7 +3565,7 @@ char *buildin_getguildmaster_sub (int guild_id)
+     {
+         char *buf;
+         buf = (char *) aCalloc (24, sizeof (char));
+-        strncpy (buf, g->master, 23);
++        safestrncpy (buf, g->master, 24);
+         return buf;
+     }
+ 
+@@ -3627,7 +3627,7 @@ BUILDIN_FUNC(strcharinfo)
+     {
+         char *buf;
+         buf = (char *) aCalloc (24, sizeof (char));
+-        strncpy (buf, sd->status.name, 23);
++        safestrncpy (buf, sd->status.name, 24);
+         push_str (st->stack, C_STR, buf);
+     }
+     if (num == 1)
+@@ -6345,7 +6345,7 @@ BUILDIN_FUNC(getcastlename)
+             if (strcmp (mapname, gc->map_name) == 0)
+             {
+                 buf = (char *) aCalloc (24, sizeof (char));
+-                strncpy (buf, gc->castle_name, 23);
++                safestrncpy (buf, gc->castle_name, 24);
+                 break;
+             }
+         }
+@@ -7058,9 +7058,9 @@ BUILDIN_FUNC(getitemname)
+ 
+     item_name = (char *) aCalloc (24, sizeof (char));
+     if (i_data)
+-        strncpy (item_name, i_data->jname, 23);
++        safestrncpy (item_name, i_data->jname, 24);
+     else
+-        strncpy (item_name, "Unknown Item", 23);
++        safestrncpy (item_name, "Unknown Item", 24);
+ 
+     push_str (st->stack, C_STR, item_name);
+ 
+@@ -7754,7 +7754,7 @@ BUILDIN_FUNC(getsavepoint)
+         case 0:
+             mapname = calloc (24, 1);
+             if (sd)
+-                strncpy (mapname, sd->status.save_point.map, 23);
++                safestrncpy (mapname, sd->status.save_point.map, 24);
+             else
+                 *mapname = 0;
+ 
+@@ -8037,8 +8037,8 @@ BUILDIN_FUNC(fakenpcname)
+     nd = npc_name2id (name);
+     if (!nd)
+         return 1;
+-    strncpy (nd->name, newname, sizeof(nd->name)-1);
+-    nd->name[sizeof(nd->name)-1] = '\0';
++    safestrncpy (nd->name, newname, sizeof(nd->name));
++//    nd->name[sizeof(nd->name)-1] = '\0';
+     nd->class = newsprite;
+ 
+     // Refresh this npc
+diff --git a/src/map/tmw.c b/src/map/tmw.c
+index d159464..0e0ec3b 100644
+--- a/src/map/tmw.c
++++ b/src/map/tmw.c
+@@ -12,6 +12,7 @@
+ #include "version.h"
+ #include "nullpo.h"
+ 
++#include "strlib.h"
+ #include "atcommand.h"
+ #include "battle.h"
+ #include "chat.h"
+@@ -73,7 +74,7 @@ int tmw_CheckChatSpam (struct map_session_data *sd, char *message)
+     if (tmw_CheckChatLameness (sd, message))
+         sd->chat_lines_in += battle_config.chat_lame_penalty;
+ 
+-    strncpy ((char *) sd->chat_lastmsg, message, battle_config.chat_maxline);
++    safestrncpy ((char *) sd->chat_lastmsg, message, battle_config.chat_maxline);
+ 
+     if (sd->chat_lines_in >= battle_config.chat_spam_flood
+         || sd->chat_total_repeats >= battle_config.chat_spam_flood)
+-- 
+2.1.0
+

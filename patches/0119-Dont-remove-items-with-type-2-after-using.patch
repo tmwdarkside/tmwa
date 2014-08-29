@@ -1,0 +1,30 @@
+From 818e8119e6d91767ba2bb27653d199686a08dda9 Mon Sep 17 00:00:00 2001
+From: Andrei Karas <akaras@inbox.ru>
+Date: Sat, 18 Dec 2010 02:56:00 +0200
+Subject: [PATCH 119/226] Dont remove items with type 2 after using.
+
+---
+ src/map/pc.c | 7 +++++--
+ 1 file changed, 5 insertions(+), 2 deletions(-)
+
+diff --git a/src/map/pc.c b/src/map/pc.c
+index 298e069..a09f00b 100644
+--- a/src/map/pc.c
++++ b/src/map/pc.c
+@@ -4113,8 +4113,11 @@ int pc_useitem (struct map_session_data *sd, int n)
+ 
+         run_script (sd->inventory_data[n]->use_script, 0, sd->bl.id, 0);
+ 
+-        clif_useitemack (sd, n, amount - 1, 1);
+-        pc_delitem (sd, n, 1, 1);
++        if (itemdb_type (sd->status.inventory[n].nameid) != 2)
++        {
++            clif_useitemack (sd, n, amount - 1, 1);
++            pc_delitem (sd, n, 1, 1);
++        }
+     }
+ 
+     return 0;
+-- 
+2.1.0
+

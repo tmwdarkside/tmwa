@@ -1,0 +1,25 @@
+From 2ee20ebfe3cfdc6008febda24a8a9605145fed6a Mon Sep 17 00:00:00 2001
+From: Andrei Karas <akaras@inbox.ru>
+Date: Sat, 18 Dec 2010 04:20:33 +0200
+Subject: [PATCH 121/226] Add item type 2 to itemdb validation checks.
+
+---
+ src/map/itemdb.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/src/map/itemdb.c b/src/map/itemdb.c
+index 518ef8e..33f104f 100644
+--- a/src/map/itemdb.c
++++ b/src/map/itemdb.c
+@@ -399,7 +399,7 @@ static int itemdb_readdb (void)
+             id->slot = atoi (str[11]);
+             id->sex = atoi (str[12]);
+ 
+-            if (id->type != 0 && id->type != 3 && !strlen(str[13]))
++            if (id->type != 0 && id->type != 2 && id->type != 3 && !strlen(str[13]))
+                 printf("item Loc error. Id %d\n", nameid);
+ 
+             id->equip = atoi (str[13]);
+-- 
+2.1.0
+

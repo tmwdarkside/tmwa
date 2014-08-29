@@ -1,0 +1,180 @@
+From 39581de144928eb51df416f1dd47e2ff780ba11f Mon Sep 17 00:00:00 2001
+From: Andrei Karas <akaras@inbox.ru>
+Date: Sat, 18 Dec 2010 05:20:35 +0200
+Subject: [PATCH 122/226] Add ability to invoke magic command from script and
+ script from magic.
+
+In magic command script("{ BODY }")
+In script command spell([NICK,] "BODY")
+---
+ src/map/clif.c       |  2 +-
+ src/map/magic-stmt.c | 18 ++++++++++++++++++
+ src/map/magic.c      |  9 +++++++--
+ src/map/magic.h      |  2 +-
+ src/map/script.c     | 40 ++++++++++++++++++++++++++++++++++++++--
+ 5 files changed, 65 insertions(+), 6 deletions(-)
+
+diff --git a/src/map/clif.c b/src/map/clif.c
+index 5c2d065..818da37 100644
+--- a/src/map/clif.c
++++ b/src/map/clif.c
+@@ -7409,7 +7409,7 @@ void clif_parse_GlobalMessage (int fd, struct map_session_data *sd)
+         return;
+     }
+ 
+-    if (!magic_message (sd, buf, msg_len))
++    if (!magic_message (sd, buf, msg_len, 1))
+     {
+         /* Don't send chat that results in an automatic ban. */
+         if (tmw_CheckChatSpam (sd, message))
+diff --git a/src/map/magic-stmt.c b/src/map/magic-stmt.c
+index 95cf4ba..ae2e09d 100644
+--- a/src/map/magic-stmt.c
++++ b/src/map/magic-stmt.c
+@@ -1043,6 +1043,23 @@ static int op_resurrect (env_t * env __attribute__ ((unused)), int args_nr __att
+     return 0;
+ }
+ 
++static int op_runscript (env_t * env __attribute__ ((unused)), int args_nr __attribute__ ((unused)), val_t * args)
++{
++    if (!args)
++        return 1;
++
++    character_t *sd = ARGCHAR (0);
++
++    if (!sd)
++        return 1;
++
++    char *script = parse_script(ARGSTR (1), 1);
++    run_script (script, 0, sd->bl.id, 0);
++    free (script);
++
++    return 0;
++}
++
+ static op_t operations[] = {
+     {"sfx", ".ii", op_sfx},
+     {"instaheal", "eii", op_instaheal},
+@@ -1069,6 +1086,7 @@ static op_t operations[] = {
+     {"drop_item_for", "l.iiei", op_drop_item_for},
+     {"gain_experience", "eiii", op_gain_exp},
+     {"resurrect", "eiii", op_resurrect},
++    {"runscript", "es", op_runscript},
+     {NULL, NULL, NULL}
+ };
+ 
+diff --git a/src/map/magic.c b/src/map/magic.c
+index 4cd217c..cdf5e85 100644
+--- a/src/map/magic.c
++++ b/src/map/magic.c
+@@ -64,7 +64,7 @@ static char *magic_tokenise (char *src, char **parameter)
+ }
+ 
+ int magic_message (character_t * caster, char *spell_,
+-                   size_t spell_len  __attribute__ ((unused)))
++                   size_t spell_len  __attribute__ ((unused)), int isChat)
+ {
+     if (!caster || !spell_)
+         return 0;
+@@ -73,7 +73,12 @@ int magic_message (character_t * caster, char *spell_,
+         return 0;
+ 
+     int  power = caster->matk1;
+-    char *invocation_base = spell_ + 8;
++    char *invocation_base;
++    if (isChat)
++        invocation_base = spell_ + 8;
++    else
++        invocation_base = spell_;
++
+     char *source_invocation =
+         1 + invocation_base + strlen (caster->status.name);
+     spell_t *spell;
+diff --git a/src/map/magic.h b/src/map/magic.h
+index 99ae647..737ac93 100644
+--- a/src/map/magic.h
++++ b/src/map/magic.h
+@@ -22,7 +22,7 @@ struct invocation;              /* Spell invocation */
+  * \return 1 or -1 if the input message was magic and was handled by this function, 0 otherwise.  -1 is returned when the
+  *         message should not be repeated.
+  */
+-int  magic_message (character_t * caster, char *spell, size_t spell_len);
++int  magic_message (character_t * caster, char *spell, size_t spell_len, int isChat);
+ 
+ /**
+  * Removes the shroud from a character
+diff --git a/src/map/script.c b/src/map/script.c
+index 52d15d9..498f13e 100644
+--- a/src/map/script.c
++++ b/src/map/script.c
+@@ -421,6 +421,7 @@ int  buildin_isdead (struct script_state *st);  // [Jaxad0127]
+ int  buildin_fakenpcname (struct script_state *st); //[Kage]
+ int  buildin_unequip_by_id (struct script_state *st);   // [Freeyorp]
+ int  buildin_setcollision (struct script_state *st); // [4144]
++int  buildin_spell (struct script_state *st); // [4144]
+ 
+ void push_val (struct script_stack *stack, int type, int val);
+ int  run_func (struct script_state *st);
+@@ -860,6 +861,8 @@ struct
+     buildin_unequip_by_id, "unequipbyid", "i"}, // [Freeyorp]
+     {
+     buildin_setcollision, "setcollision", "siiiii"}, // [4144]
++    {
++    buildin_spell, "spell", "ss"}, // [4144]
+         // End Additions
+     {
+ NULL, NULL, NULL},};
+@@ -8018,8 +8021,6 @@ BUILDIN_FUNC(fakenpcname)
+ 
+ BUILDIN_FUNC(setcollision)
+ {
+-    struct map_session_data *sd;
+-    sd = script_rid2sd (st);
+     const char *map;
+     int x1, y1, x2, y2, m, type;
+ 
+@@ -8038,6 +8039,41 @@ BUILDIN_FUNC(setcollision)
+     return 0;
+ }
+ 
++BUILDIN_FUNC(spell)
++{
++    struct map_session_data *sd;
++    char *message;
++    char *spell;
++    char *nick;
++
++    if (!script_hasdata(st, 2))
++        return 0;
++
++    if (script_hasdata(st, 3))
++    {
++        nick = script_getstr(st, 2);
++        sd = map_nick2sd(nick);
++        message = script_getstr(st, 3);
++    }
++    else
++    {
++        nick = sd->status.name;
++        sd = script_rid2sd (st);
++        message = script_getstr(st, 2);
++    }
++    if (!sd)
++        return 0;
++
++    spell = aCalloc (strlen(nick) + strlen(message) + 10, 1);
++    strcpy (spell, nick);
++    strcat (spell, " : ");
++    strcat (spell, message);
++
++    magic_message (sd, spell, strlen(spell), 0);
++    free (spell);
++    return 0;
++}
++
+ //
+ // ��s��main
+ //
+-- 
+2.1.0
+

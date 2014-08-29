@@ -1,0 +1,465 @@
+From 25bb1a9a99c83d9d03dd60654ae5f44f5bb40fdc Mon Sep 17 00:00:00 2001
+From: Andrei Karas <akaras@inbox.ru>
+Date: Wed, 15 Dec 2010 12:35:34 +0200
+Subject: [PATCH 104/226] Port from eathena script command guildchangegm.
+
+Also port necessary code.
+---
+ src/char/Makefile    |  4 ++--
+ src/char/int_guild.c | 46 ++++++++++++++++++++++++++++++++++++++
+ src/char/inter.c     | 11 ++++++++-
+ src/common/mmo.h     |  1 +
+ src/common/strlib.c  |  4 ++++
+ src/common/strlib.h  |  4 ++--
+ src/map/guild.c      | 63 ++++++++++++++++++++++++++++++++++++++++++++++++++++
+ src/map/guild.h      |  2 ++
+ src/map/intif.c      | 35 ++++++++++++++++++++++++++++-
+ src/map/intif.h      |  1 +
+ src/map/map.c        |  2 +-
+ src/map/map.h        |  2 +-
+ src/map/script.c     | 24 ++++++++++++++++++++
+ 13 files changed, 191 insertions(+), 8 deletions(-)
+
+diff --git a/src/char/Makefile b/src/char/Makefile
+index 5eb4b51..16b7964 100644
+--- a/src/char/Makefile
++++ b/src/char/Makefile
+@@ -3,8 +3,8 @@ include ../../make.defs
+ all: char-server
+ txt: char-server
+ 
+-COMMON_OBJ = ../common/core.o ../common/socket.o ../common/timer.o ../common/db.o ../common/lock.o ../common/malloc.o ../common/mt_rand.o
+-COMMON_H = ../common/core.h ../common/socket.h ../common/timer.h ../common/mmo.h ../common/db.h ../common/lock.h ../common/timer.h ../common/malloc.h ../common/mt_rand.h
++COMMON_OBJ = ../common/core.o ../common/socket.o ../common/timer.o ../common/db.o ../common/lock.o ../common/malloc.o ../common/showmsg.o ../common/strlib.o ../common/mt_rand.o
++COMMON_H = ../common/core.h ../common/socket.h ../common/timer.h ../common/mmo.h ../common/db.h ../common/lock.h ../common/timer.h ../common/malloc.h ../common/showmsg.h ../common/strlib.h ../common/mt_rand.h
+ char-server: char.o inter.o int_party.o int_guild.o int_storage.o $(COMMON_OBJ)
+ 	$(CC) $(CFLAGS) -o ../../$@ $^
+ 
+diff --git a/src/char/int_guild.c b/src/char/int_guild.c
+index f54bcff..e3041dd 100644
+--- a/src/char/int_guild.c
++++ b/src/char/int_guild.c
+@@ -8,6 +8,9 @@
+ #include "db.h"
+ #include "lock.h"
+ 
++#include "../common/showmsg.h"
++#include "../common/strlib.h"
++
+ #include <string.h>
+ #include <stdio.h>
+ #include <stdlib.h>
+@@ -1089,6 +1092,18 @@ int mapif_guild_emblem (struct guild *g)
+     return 0;
+ }
+ 
++int mapif_guild_master_changed(struct guild *g, int aid, int cid)
++{
++    unsigned char buf[14];
++    WBUFW(buf, 0) = 0x3843;
++    WBUFL(buf, 2) = g->guild_id;
++    WBUFL(buf, 6) = aid;
++    WBUFL(buf, 10) = cid;
++    mapif_sendall(buf, 14);
++
++    return 0;
++}
++
+ int mapif_guild_castle_dataload (int castle_id, int index, int value)
+ {
+     unsigned char buf[9];
+@@ -1822,6 +1837,32 @@ int mapif_parse_GuildCheck (int fd __attribute__ ((unused)), int guild_id,
+     return guild_check_conflict (guild_id, account_id, 0 /*char_id*/);
+ }
+ 
++int mapif_parse_GuildMasterChange(int fd __attribute__ ((unused)), int guild_id, const char* name, int len)
++{
++    struct guild *g = g = numdb_search (guild_db, guild_id);;
++    struct guild_member gm;
++    int pos;
++
++    if(g == NULL || g->guild_id <= 0 || len > NAME_LENGTH)
++        return 0;
++
++    for (pos = 0; pos < g->max_member && strncmp(g->member[pos].name, name, len); pos++);
++
++    if (pos == g->max_member)
++        return 0; //Character not found??
++
++    memcpy(&gm, &g->member[pos], sizeof (struct guild_member));
++    memcpy(&g->member[pos], &g->member[0], sizeof(struct guild_member));
++    memcpy(&g->member[0], &gm, sizeof(struct guild_member));
++
++    g->member[pos].position = g->member[0].position;
++    g->member[0].position = 0; //Position 0: guild Master.
++    safestrncpy(g->master, name, NAME_LENGTH);
++
++    ShowInfo("int_guild: Guildmaster Changed to %s (Guild %d - %s)\n", name, guild_id, g->name);
++    return mapif_guild_master_changed(g, g->member[0].account_id, 0);
++}
++
+ // map server ‚©‚ç‚Ì’ÊM
+ // E‚PƒpƒPƒbƒg‚Ì‚Ý‰ðÍ‚·‚é‚±‚Æ
+ // EƒpƒPƒbƒg’·ƒf[ƒ^‚Íinter.c‚ÉƒZƒbƒg‚µ‚Ä‚¨‚­‚±‚Æ
+@@ -1843,6 +1884,11 @@ int inter_guild_parse_frommap (int fd)
+                                         (struct guild_member *) RFIFOP (fd,
+                                                                         8));
+             break;
++        case 0x3033:
++            mapif_parse_GuildMasterChange(fd, RFIFOL(fd,4),
++                                          (const char*)RFIFOP(fd, 8), RFIFOW(fd,2) - 8);
++            break;
++
+         case 0x3034:
+             mapif_parse_GuildLeave (fd, RFIFOL (fd, 2), RFIFOL (fd, 6),
+                                     RFIFOL (fd, 10), RFIFOB (fd, 14),
+diff --git a/src/char/inter.c b/src/char/inter.c
+index 0caf45f..d238ce1 100644
+--- a/src/char/inter.c
++++ b/src/char/inter.c
+@@ -48,14 +48,23 @@ int  inter_send_packet_length[] = {
+ 
+ // ŽóMƒpƒPƒbƒg’·ƒŠƒXƒg
+ int  inter_recv_packet_length[] = {
++// 0x3000
+     -1, -1, 7, -1, -1, 6, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
++// 0x3010
+     6, -1, 0, 0, 0, 0, 0, 0, 10, -1, 0, 0, 0, 0, 0, 0,
++// 0x3020
+     72, 6, 52, 14, 10, 29, 6, -1, 34, 0, 0, 0, 0, 0, 0, 0,
+-    -1, 6, -1, 0, 55, 19, 6, -1, 14, -1, -1, -1, 14, 19, 186, -1,
++// 0x3030
++    -1, 6, -1, -1, 55, 19, 6, -1, 14, -1, -1, -1, 14, 19, 186, -1,
++// 0x3040
+     5, 9, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
++// 0x3050
+     0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
++// 0x3060
+     0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
++// 0x3070
+     0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
++// 0x3080
+     48, 14, -1, 6, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+ };
+ 
+diff --git a/src/common/mmo.h b/src/common/mmo.h
+index 891bbe1..c08348a 100644
+--- a/src/common/mmo.h
++++ b/src/common/mmo.h
+@@ -66,6 +66,7 @@
+ #define CHAR_CONF_NAME  "conf/char_athena.conf"
+ 
+ #define MAP_NAME_LENGTH 24
++#define NAME_LENGTH (23 + 1)
+ 
+ struct item
+ {
+diff --git a/src/common/strlib.c b/src/common/strlib.c
+index 7f871a2..0ac6413 100644
+--- a/src/common/strlib.c
++++ b/src/common/strlib.c
+@@ -110,6 +110,7 @@ int jmemescapecpy (char* pt, const char* spt, int size)
+ }
+ 
+ // Function to suppress control characters in a string.
++/*
+ int remove_control_chars(char* str)
+ {
+ 	int i;
+@@ -124,6 +125,7 @@ int remove_control_chars(char* str)
+ 
+ 	return change;
+ }
++*/
+ 
+ // Removes characters identified by ISSPACE from the start and end of the string
+ // NOTE: make sure the string is not const!!
+@@ -294,6 +296,7 @@ int e_mail_check(char* email)
+ // Return numerical value of a switch configuration
+ // on/off, english, français, deutsch, español
+ //--------------------------------------------------
++/*
+ int config_switch(const char* str)
+ {
+ 	if (strcmpi(str, "on") == 0 || strcmpi(str, "yes") == 0 || strcmpi(str, "oui") == 0 || strcmpi(str, "ja") == 0 || strcmpi(str, "si") == 0)
+@@ -303,6 +306,7 @@ int config_switch(const char* str)
+ 
+ 	return (int)strtol(str, NULL, 0);
+ }
++*/
+ 
+ /// always nul-terminates the string
+ char* safestrncpy(char* dst, const char* src, size_t n)
+diff --git a/src/common/strlib.h b/src/common/strlib.h
+index 074c7ea..80f3580 100644
+--- a/src/common/strlib.h
++++ b/src/common/strlib.h
+@@ -13,7 +13,7 @@ char* jstrescape (char* pt);
+ char* jstrescapecpy (char* pt, const char* spt);
+ int jmemescapecpy (char* pt, const char* spt, int size);
+ 
+-int remove_control_chars(char* str);
++//int remove_control_chars(char* str);
+ char* trim(char* str);
+ char* normalize_name(char* str,const char* delims);
+ const char *stristr(const char *haystack, const char *needle);
+@@ -29,7 +29,7 @@ size_t strnlen (const char* string, size_t maxlen);
+ #endif
+ 
+ int e_mail_check(char* email);
+-int config_switch(const char* str);
++//int config_switch(const char* str);
+ 
+ /// always nul-terminates the string
+ char* safestrncpy(char* dst, const char* src, size_t n);
+diff --git a/src/map/guild.c b/src/map/guild.c
+index 2c462ab..8af83b4 100644
+--- a/src/map/guild.c
++++ b/src/map/guild.c
+@@ -1585,6 +1585,69 @@ int guild_broken (int guild_id, int flag)
+     return 0;
+ }
+ 
++//Changes the Guild Master to the specified player. [Skotlex]
++int guild_gm_change(int guild_id, struct map_session_data *sd)
++{
++    struct guild *g;
++    nullpo_retr(0, sd);
++
++    if (sd->status.guild_id != guild_id)
++        return 0;
++
++    g = guild_search(guild_id);
++
++    nullpo_retr(0, g);
++
++    if (strcmp(g->master, sd->status.name) == 0) //Nothing to change
++        return 0;
++
++    //Notify servers that master has changed.
++    intif_guild_change_gm(guild_id, sd->status.name, strlen(sd->status.name));
++    return 1;
++}
++
++int guild_gm_changed(int guild_id, int account_id, int char_id __attribute__ ((unused)))
++{
++    struct guild *g;
++    struct guild_member gm;
++    int pos;
++
++    g = guild_search(guild_id);
++
++    if (!g)
++        return 0;
++
++    for(pos = 0; pos < g->max_member && !(
++        g->member[pos].account_id == account_id);
++        pos ++);
++
++    if (pos == 0 || pos == g->max_member)
++        return 0;
++
++    memcpy(&gm, &g->member[pos], sizeof (struct guild_member));
++    memcpy(&g->member[pos], &g->member[0], sizeof(struct guild_member));
++    memcpy(&g->member[0], &gm, sizeof(struct guild_member));
++
++    g->member[pos].position = g->member[0].position;
++    g->member[0].position = 0; //Position 0: guild Master.
++    strcpy(g->master, g->member[0].name);
++
++    if (g->member[pos].sd && g->member[pos].sd->fd)
++    {
++        clif_displaymessage(g->member[pos].sd->fd, "You no longer are the Guild Master.");
++//        g->member[pos].sd->state.gmaster_flag = 0;
++    }
++
++    if (g->member[0].sd && g->member[0].sd->fd)
++    {
++        clif_displaymessage(g->member[0].sd->fd, "You have become the Guild Master!");
++//        g->member[0].sd->state.gmaster_flag = g;
++        //Block his skills for 5 minutes to prevent abuse.
++//        guild_block_skill(g->member[0].sd, 300000);
++    }
++    return 1;
++}
++
+ // ƒMƒ‹ƒh‰ðŽU
+ int guild_break (struct map_session_data *sd, char *name)
+ {
+diff --git a/src/map/guild.h b/src/map/guild.h
+index ea30b5c..3bcfaba 100644
+--- a/src/map/guild.h
++++ b/src/map/guild.h
+@@ -78,6 +78,8 @@ int  guild_send_message (struct map_session_data *sd, char *mes, int len);
+ int  guild_recv_message (int guild_id, int account_id, char *mes, int len);
+ int  guild_skillupack (int guild_id, int skill_num, int account_id);
+ int  guild_break (struct map_session_data *sd, char *name);
++int  guild_gm_change(int guild_id, struct map_session_data *sd);
++int  guild_gm_changed(int guild_id, int account_id, int char_id);
+ int  guild_broken (int guild_id, int flag);
+ 
+ int  guild_addcastleinfoevent (int castle_id, int index, const char *name);
+diff --git a/src/map/intif.c b/src/map/intif.c
+index eaaf619..aefad70 100644
+--- a/src/map/intif.c
++++ b/src/map/intif.c
+@@ -37,14 +37,23 @@
+ #endif
+ 
+ static const int packet_len_table[] = {
++// 0x3800
+     -1, -1, 27, -1, -1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
++// 0x3810
+     -1, 7, 0, 0, 0, 0, 0, 0, -1, 11, 0, 0, 0, 0, 0, 0,
++// 0x3820
+     35, -1, 11, 15, 34, 29, 7, -1, 0, 0, 0, 0, 0, 0, 0, 0,
++// 0x3830
+     10, -1, 15, 0, 79, 19, 7, -1, 0, -1, -1, -1, 14, 67, 186, -1,
+-    9, 9, -1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
++// 0x3840
++    9, 9, -1, 14, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
++// 0x3850
+     0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
++// 0x3860
+     0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
++// 0x3870
+     0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
++// 0x3880
+     11, -1, 7, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+ };
+ 
+@@ -249,6 +258,22 @@ int intif_party_addmember (int party_id, int account_id)
+     return 0;
+ }
+ 
++int intif_guild_change_gm(int guild_id, const char* name, int len)
++{
++    if (len < 0 || !name)
++        return 0;
++
++//    if (CheckForCharServer())
++//        return 0;
++    //WFIFOHEAD(inter_fd, len + 8);
++    WFIFOW(inter_fd, 0) = 0x3033;
++    WFIFOW(inter_fd, 2) = len + 8;
++    WFIFOL(inter_fd, 4) = guild_id;
++    memcpy(WFIFOP(inter_fd,8), name, len);
++    WFIFOSET(inter_fd, len + 8);
++    return 0;
++}
++
+ // ƒp[ƒeƒBÝ’è•ÏX
+ int intif_party_changeoption (int party_id, int account_id, int exp, int item)
+ {
+@@ -1106,6 +1131,11 @@ int intif_parse_GuildCastleAllDataLoad (int fd)
+                                     (struct guild_castle *) RFIFOP (fd, 4));
+ }
+ 
++int intif_parse_GuildMasterChanged(int fd)
++{
++    return guild_gm_changed(RFIFOL(fd,2), RFIFOL(fd,6), RFIFOL(fd,10));
++}
++
+ //-----------------------------------------------------------------
+ // inter server‚©‚ç‚Ì’ÊM
+ // ƒGƒ‰[‚ª‚ ‚ê‚Î0(false)‚ð•Ô‚·‚±‚Æ
+@@ -1241,6 +1271,9 @@ int intif_parse (int fd)
+         case 0x3842:
+             intif_parse_GuildCastleAllDataLoad (fd);
+             break;
++        case 0x3843:
++            intif_parse_GuildMasterChanged(fd);
++            break;
+             //case 0x3880:  intif_parse_CreateP.et(fd); break;
+             //case 0x3881:  intif_parse_RecvP.etData(fd); break;
+             //case 0x3882:  intif_parse_SaveP.etOk(fd); break;
+diff --git a/src/map/intif.h b/src/map/intif.h
+index b6abd78..14146e7 100644
+--- a/src/map/intif.h
++++ b/src/map/intif.h
+@@ -24,6 +24,7 @@ int  intif_request_partyinfo (int party_id);
+ int  intif_party_addmember (int party_id, int account_id);
+ int  intif_party_changeoption (int party_id, int account_id, int exp,
+                                int item);
++int  intif_guild_change_gm(int guild_id, const char* name, int len);
+ int  intif_party_leave (int party_id, int accound_id);
+ int  intif_party_changemap (struct map_session_data *sd, int online);
+ int  intif_break_party (int party_id);
+diff --git a/src/map/map.c b/src/map/map.c
+index 18c343e..7b6fb65 100644
+--- a/src/map/map.c
++++ b/src/map/map.c
+@@ -1446,7 +1446,7 @@ struct map_session_data *map_get_prev_session (struct map_session_data *d)
+  * return map_session_data pointer or NULL
+  *------------------------------------------
+  */
+-struct map_session_data *map_nick2sd (char *nick)
++struct map_session_data *map_nick2sd (const char *nick)
+ {
+     if (nick == NULL)
+         return NULL;
+diff --git a/src/map/map.h b/src/map/map.h
+index e2b36b3..6bce94f 100644
+--- a/src/map/map.h
++++ b/src/map/map.h
+@@ -800,7 +800,7 @@ void map_deliddb (struct block_list *bl);
+ int  map_foreachiddb (int (*)(void *, void *, va_list), ...);
+ void map_addnickdb (struct map_session_data *);
+ int  map_scriptcont (struct map_session_data *sd, int id);  /* Continues a script either on a spell or on an NPC */
+-struct map_session_data *map_nick2sd (char *);
++struct map_session_data *map_nick2sd (const char *);
+ int  compare_item (struct item *a, struct item *b);
+ 
+ struct map_session_data *map_get_first_session ();
+diff --git a/src/map/script.c b/src/map/script.c
+index ad918c2..5a8ad17 100644
+--- a/src/map/script.c
++++ b/src/map/script.c
+@@ -284,6 +284,7 @@ int  buildin_setopt2 (struct script_state *st);
+ int  buildin_checkoption (struct script_state *st);
+ int  buildin_setoption (struct script_state *st);
+ int  buildin_guildgetexp (struct script_state *st);
++int  buildin_guildchangegm (struct script_state *st);
+ int  buildin_setcart (struct script_state *st);
+ int  buildin_checkcart (struct script_state *st);   // check cart [Valaris]
+ int  buildin_setfalcon (struct script_state *st);
+@@ -587,6 +588,8 @@ struct
+     {
+     buildin_guildgetexp, "guildgetexp", "i"},
+     {
++    buildin_guildchangegm, "guildchangegm", "is"},
++    {
+     buildin_setcart, "setcart", ""},
+     {
+     buildin_checkcart, "checkcart", "*"},   //fixed by Lupus (added '*')
+@@ -4320,6 +4323,27 @@ BUILDIN_FUNC(guildgetexp)
+ }
+ 
+ /*==========================================
++ * Changes the guild master of a guild [Skotlex]
++ *------------------------------------------*/
++BUILDIN_FUNC(guildchangegm)
++{
++    TBL_PC *sd;
++    int guild_id;
++    const char *name;
++
++    guild_id = script_getnum(st, 2);
++    name = script_getstr(st, 3);
++    sd = map_nick2sd(name);
++
++    if (!sd)
++        script_pushint(st, 0);
++    else
++        script_pushint(st, guild_gm_change(guild_id, sd));
++
++    return 0;
++}
++
++/*==========================================
+  * ï¿½Jï¿½[ï¿½gï¿½ï¿½ï¿½tï¿½ï¿½ï¿½ï¿½
+  *------------------------------------------
+  */
+-- 
+2.1.0
+

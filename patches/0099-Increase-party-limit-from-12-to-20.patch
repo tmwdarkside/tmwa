@@ -1,0 +1,41 @@
+From f1148a6c81dbe8266c0e0a3e36186b3233eb692c Mon Sep 17 00:00:00 2001
+From: Andrei Karas <akaras@inbox.ru>
+Date: Tue, 14 Dec 2010 03:42:46 +0200
+Subject: [PATCH 099/226] Increase party limit from 12 to 20.
+
+Also allow change party size and old partiest
+will be auto converted to new size.
+---
+ src/char/int_party.c | 2 +-
+ src/common/mmo.h     | 2 +-
+ 2 files changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/src/char/int_party.c b/src/char/int_party.c
+index 12c1975..c6b69ec 100644
+--- a/src/char/int_party.c
++++ b/src/char/int_party.c
+@@ -78,7 +78,7 @@ int inter_party_fromstr (char *str, struct party *p)
+         if (sscanf
+             (str + 1, "%d,%d\t%255[^\t]\t", &tmp_int[0], &tmp_int[1],
+              tmp_str) != 3)
+-            return 1;
++            return 0;
+ 
+         m->account_id = tmp_int[0];
+         m->leader = tmp_int[1];
+diff --git a/src/common/mmo.h b/src/common/mmo.h
+index ecfb223..9c63501 100644
+--- a/src/common/mmo.h
++++ b/src/common/mmo.h
+@@ -35,7 +35,7 @@
+ #define MAX_WALK_SPEED 1000
+ #define MAX_STORAGE 300
+ #define MAX_GUILD_STORAGE 1000
+-#define MAX_PARTY 12
++#define MAX_PARTY 20
+ #define MAX_GUILD 120            // increased max guild members to accomodate for +2 increase for extension levels [Valaris] (removed) [PoW]
+ #define MAX_GUILDPOSITION 20    // increased max guild positions to accomodate for all members [Valaris] (removed) [PoW]
+ #define MAX_GUILDEXPLUSION 32
+-- 
+2.1.0
+

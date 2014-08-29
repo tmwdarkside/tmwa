@@ -1,0 +1,56 @@
+From bb0c29c6964a870a0fd60e13806ee33e89927901 Mon Sep 17 00:00:00 2001
+From: Andrei Karas <akaras@inbox.ru>
+Date: Mon, 3 Jan 2011 04:02:37 +0200
+Subject: [PATCH 165/226] Implement last three item attributes.
+
+---
+ src/map/clif.c                   | 3 +++
+ src/map/magic-interpreter-base.c | 3 ++-
+ src/map/pc.c                     | 3 +++
+ 3 files changed, 8 insertions(+), 1 deletion(-)
+
+diff --git a/src/map/clif.c b/src/map/clif.c
+index 4f5a795..0eceedf 100644
+--- a/src/map/clif.c
++++ b/src/map/clif.c
+@@ -7913,6 +7913,9 @@ void clif_parse_EquipItem (int fd, struct map_session_data *sd)
+             || sd->sc_data[SC_BERSERK].timer != -1))
+         return;
+ 
++    if (itemdb_attr (sd->status.inventory[index].nameid) && ITEM_ATTR_DONTEQUIP)
++        return;
++
+     if (sd->status.inventory[index].identify != 1)
+     {                           // ���Ӓ�
+         // Bjorn: Auto-identify items when equipping them as there
+diff --git a/src/map/magic-interpreter-base.c b/src/map/magic-interpreter-base.c
+index d34df34..d247272 100644
+--- a/src/map/magic-interpreter-base.c
++++ b/src/map/magic-interpreter-base.c
+@@ -279,7 +279,8 @@ static void consume_components (character_t * caster, component_t * component)
+ {
+     while (component)
+     {
+-        pc_remove_items (caster, component->item_id, component->count);
++        if (!(itemdb_attr (component->item_id) && ITEM_ATTR_DONTREMOVEMAGIC))
++            pc_remove_items (caster, component->item_id, component->count);
+         component = component->next;
+     }
+ }
+diff --git a/src/map/pc.c b/src/map/pc.c
+index 761ac1c..295fcfe 100644
+--- a/src/map/pc.c
++++ b/src/map/pc.c
+@@ -4123,6 +4123,9 @@ int pc_useitem (struct map_session_data *sd, int n)
+             return 1;
+         }
+ 
++        if (itemdb_attr (sd->status.inventory[n].nameid) && ITEM_ATTR_DONTUSE)
++            return 0;
++
+         run_script (sd->inventory_data[n]->use_script, 0, sd->bl.id, 0);
+ 
+         if (itemdb_type (sd->status.inventory[n].nameid) != 2 &&
+-- 
+2.1.0
+

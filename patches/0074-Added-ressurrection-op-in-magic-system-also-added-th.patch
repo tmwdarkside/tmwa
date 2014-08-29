@@ -1,0 +1,88 @@
+From 81f340474e1d42b67a7bc0c9289d5440ea793cc1 Mon Sep 17 00:00:00 2001
+From: var <simone.m@gmx.com>
+Date: Thu, 7 Oct 2010 16:30:51 +0200
+Subject: [PATCH 074/226] Added ressurrection op in magic system, also added
+ the desctiption of it in the documents spell-language file
+
+---
+ doc/spell-language   |  7 +++++++
+ src/map/magic-stmt.c | 38 ++++++++++++++++++++++++++++++++++++++
+ 2 files changed, 45 insertions(+)
+
+diff --git a/doc/spell-language b/doc/spell-language
+index 5f70f89..1a29c66 100644
+--- a/doc/spell-language
++++ b/doc/spell-language
+@@ -723,6 +723,13 @@ This section documents the operations API.
+     but if reason is 1, then those experience points are NOT added to
+     the pool of experience points that healers can draw from `player'.
+ 
++  + resurrect : entity * int * int * int -> ()
++    resurrect(player, regenerated_hp, regenerated_sp, flag) resurrect
++    `player'.  If flag is 0, regenerated_hp and regenerated_sp are
++    percentage of the maximum value but if flag is 1, then those 
++    values are the real hp and sp that will be assigned to `player'.
++
++
+ 
+ Script API updates:
+ -------------------
+diff --git a/src/map/magic-stmt.c b/src/map/magic-stmt.c
+index 015bd64..d2fb833 100644
+--- a/src/map/magic-stmt.c
++++ b/src/map/magic-stmt.c
+@@ -999,6 +999,43 @@ static int op_gain_exp (env_t * env __attribute__ ((unused)), int args_nr __attr
+     return 0;
+ }
+ 
++//UFB
++static int op_resurrect (env_t * env, int args_nr, val_t * args)
++{
++    character_t *sd = (ETY (0) == BL_PC) ? ARGPC (0) : NULL;
++
++	int perc_hp = (ARGINT (1) > 0) ? ( ARGINT (1) > 100) ? 100 : (ARGINT (1) / 100 ) : 50;
++	int perc_mp = (ARGINT (2) > 0) ? ( ARGINT (2) > 100) ? 100 : (ARGINT (2) / 100 ) : 50;
++
++    if (!sd || !pc_isdead(sd))
++        return 1;
++
++	// 3rd param == 1 then restore the char hp and sp in percentage
++	if(ARGINT (3) == 1){
++		sd->status.hp = sd->status.max_hp * perc_hp;
++		sd->status.sp = sd->status.max_sp * perc_mp;
++	}
++	else{
++		sd->status.hp = (ARGINT (1) > 0) ? ( (ARGINT (1) > sd->status.max_hp) ? sd->status.max_hp : ARGINT (1) ) : 1;
++		sd->status.sp = (ARGINT (2) > 0) ? ( (ARGINT (2) > sd->status.max_hp) ? sd->status.max_hp : ARGINT (2) ) : 1;
++	}
++
++    pc_setstand (sd);
++    if (battle_config.pc_invincible_time > 0)
++        pc_setinvincibletimer (sd, battle_config.pc_invincible_time);
++
++	//restore hp and sp and resurrect the char
++    clif_updatestatus (sd, SP_HP);
++    clif_updatestatus (sd, SP_SP);
++    clif_resurrection (&sd->bl, 1);
++	//bug fix for some clients that leave the char lying on the floor
++	pc_setpos (sd, sd->mapname, sd->bl.x, sd->bl.y, 3);
++	//message to display to che resurrected char
++    clif_displaymessage (sd->fd, "You've been revived! It's a miracle!");
++
++    return 0;
++}
++
+ static op_t operations[] = {
+     {"sfx", ".ii", op_sfx},
+     {"instaheal", "eii", op_instaheal},
+@@ -1024,6 +1061,7 @@ static op_t operations[] = {
+     {"drop_item", "l.ii", op_drop_item_for},
+     {"drop_item_for", "l.iiei", op_drop_item_for},
+     {"gain_experience", "eiii", op_gain_exp},
++    {"resurrect", "eiii", op_resurrect},
+     {NULL, NULL, NULL}
+ };
+ 
+-- 
+2.1.0
+

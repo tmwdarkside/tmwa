@@ -1,0 +1,124 @@
+From 038417930160ee0df61c805587bc5086e7dcc1f1 Mon Sep 17 00:00:00 2001
+From: Andrei Karas <akaras@inbox.ru>
+Date: Mon, 6 Dec 2010 03:09:15 +0200
+Subject: [PATCH 090/226] Add per map mob count limit.
+
+---
+ src/map/battle.c | 6 ++++++
+ src/map/battle.h | 1 +
+ src/map/map.c    | 8 ++++++++
+ src/map/map.h    | 1 +
+ src/map/mob.c    | 2 +-
+ 5 files changed, 17 insertions(+), 1 deletion(-)
+
+diff --git a/src/map/battle.c b/src/map/battle.c
+index 5bea6e4..f2c9a50 100644
+--- a/src/map/battle.c
++++ b/src/map/battle.c
+@@ -5540,6 +5540,7 @@ int battle_config_read (const char *cfgName)
+         battle_config.monster_loot_type = 0;
+         battle_config.mob_skill_use = 1;
+         battle_config.mob_count_rate = 100;
++        battle_config.mob_map_limit = 500;
+         battle_config.quest_skill_learn = 0;
+         battle_config.quest_skill_reset = 1;
+         battle_config.basic_skill_check = 1;
+@@ -5832,6 +5833,8 @@ int battle_config_read (const char *cfgName)
+             {
+             "mob_count_rate", &battle_config.mob_count_rate},
+             {
++            "mob_map_limit", &battle_config.mob_map_limit},
++            {
+             "quest_skill_learn", &battle_config.quest_skill_learn},
+             {
+             "quest_skill_reset", &battle_config.quest_skill_reset},
+@@ -6303,6 +6306,9 @@ int battle_config_read (const char *cfgName)
+         if ((battle_config.packet_ver_flag & 63) == 0)  // added by [Yor]
+             battle_config.packet_ver_flag = 63; // accept all clients
+ 
++        if (battle_config.mob_map_limit < 1)
++            battle_config.mob_map_limit = 1;
++
+         add_timer_func_list (battle_delay_damage_sub,
+                              "battle_delay_damage_sub");
+     }
+diff --git a/src/map/battle.h b/src/map/battle.h
+index dd67841..bececed 100644
+--- a/src/map/battle.h
++++ b/src/map/battle.h
+@@ -200,6 +200,7 @@ extern struct Battle_Config
+     int  monster_loot_type;
+     int  mob_skill_use;
+     int  mob_count_rate;
++    int  mob_map_limit;
+     int  quest_skill_learn;
+     int  quest_skill_reset;
+     int  basic_skill_check;
+diff --git a/src/map/map.c b/src/map/map.c
+index 334e61f..fde822a 100644
+--- a/src/map/map.c
++++ b/src/map/map.c
+@@ -207,6 +207,9 @@ int map_addblock (struct block_list *bl)
+ 
+     if (bl->type == BL_MOB)
+     {
++        if (map[m].mob_num > battle_config.mob_map_limit)
++            return 1;
++
+         bl->next =
+             map[m].block_mob[x / BLOCK_SIZE + (y / BLOCK_SIZE) * map[m].bxs];
+         bl->prev = &bl_head;
+@@ -215,6 +218,7 @@ int map_addblock (struct block_list *bl)
+         map[m].block_mob[x / BLOCK_SIZE + (y / BLOCK_SIZE) * map[m].bxs] = bl;
+         map[m].block_mob_count[x / BLOCK_SIZE +
+                                (y / BLOCK_SIZE) * map[m].bxs]++;
++        map[m].mob_num++;
+     }
+     else
+     {
+@@ -258,6 +262,8 @@ int map_delblock (struct block_list *bl)
+ 
+     if (bl->type == BL_PC)
+         map[bl->m].users--;
++    if (bl->type == BL_MOB &&  map[bl->m].mob_num > 0)
++        map[bl->m].mob_num--;
+ 
+     if (bl->next)
+         bl->next->prev = bl->prev;
+@@ -1793,6 +1799,8 @@ static int map_readmap (int m, char *fn, char *alias __attribute__ ((unused)))
+ 
+     map[m].npc_num = 0;
+     map[m].users = 0;
++    map[m].mob_num = 0;
++
+     memset (&map[m].flag, 0, sizeof (map[m].flag));
+     if (battle_config.pk_mode)
+         map[m].flag.pvp = 1;    // make all maps pvp for pk_mode [Valaris]
+diff --git a/src/map/map.h b/src/map/map.h
+index 782f4e6..e5fd006 100644
+--- a/src/map/map.h
++++ b/src/map/map.h
+@@ -567,6 +567,7 @@ struct map_data
+     short bxs, bys;
+     int  npc_num;
+     int  users;
++    int  mob_num;
+     struct
+     {
+         unsigned alias:1;
+diff --git a/src/map/mob.c b/src/map/mob.c
+index b108662..5a1d048 100644
+--- a/src/map/mob.c
++++ b/src/map/mob.c
+@@ -1296,7 +1296,7 @@ int mob_spawn (int id)
+ 
+     nullpo_retr (-1, md = (struct mob_data *) bl);
+ 
+-    if (!md || !md->bl.type || md->bl.type != BL_MOB)
++    if (!md || !md->bl.type || md->bl.type != BL_MOB || map[md->bl.m].mob_num > battle_config.mob_map_limit)
+         return -1;
+ 
+     md->last_spawntime = tick;
+-- 
+2.1.0
+

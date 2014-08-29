@@ -1,0 +1,77 @@
+From a9606c560448b5fd8c9bfedc36543e1bb9d29d34 Mon Sep 17 00:00:00 2001
+From: Andrei Karas <akaras@inbox.ru>
+Date: Tue, 11 Jan 2011 23:01:19 +0200
+Subject: [PATCH 183/226] Add options account_name_option and
+ account_name_letters to login server. Also at return code 10 what mean
+ incorrect name.
+
+---
+ src/login/login.c | 31 ++++++++++++++++++++++++++++++-
+ 1 file changed, 30 insertions(+), 1 deletion(-)
+
+diff --git a/src/login/login.c b/src/login/login.c
+index bd994b5..c8ea582 100644
+--- a/src/login/login.c
++++ b/src/login/login.c
+@@ -91,6 +91,9 @@ int  add_to_unlimited_account = 0;  // Give possibility or not to adjust (ladmin
+ int  start_limited_time = -1;   // Starting additional sec from now for the limited time at creation of accounts (-1: unlimited time, 0 or more: additional sec from now)
+ int  check_ip_flag = 1;         // It's to check IP of a player between login-server and char-server (part of anti-hacking system)
+ 
++int  account_name_option = 0;      // Option to know which letters/symbols are authorised in the accound name (0: all, 1: only those in account_name_letters, 2: all EXCEPT those in account_name_letters) by [Yor]
++char account_name_letters[1024] = "";  // list of letters/symbols authorised (or not) in a character name. by [Yor]
++
+ struct login_session_data
+ {
+     int  md5keylen;
+@@ -1311,7 +1314,7 @@ int mmo_auth (struct mmo_account *account, int fd)
+ 
+     len = strlen (account->userid);
+     if (len <= 2)
+-        return 0;
++        return 10;
+ 
+     len -= 2;
+ 
+@@ -1326,6 +1329,24 @@ int mmo_auth (struct mmo_account *account, int fd)
+         account->userid[len] = '\0';
+     }
+ 
++    // Check Authorised letters/symbols in the accaunt name
++    if (account_name_option == 1)
++    {                           // only letters/symbols in account_name_letters are authorised
++        for (i = 0; account->userid[i]; i++)
++            if (strchr (account_name_letters, account->userid[i]) == NULL)
++            {
++                return 10;
++            }
++    }
++    else if (account_name_option == 2)
++    {                           // letters/symbols in account_name_letters are forbidden
++        for (i = 0; account->userid[i]; i++)
++            if (strchr (account_name_letters, account->userid[i]) != NULL)
++            {
++                return 10;
++            }
++    }
++
+     // Strict account search
+     for (i = 0; i < auth_num; i++)
+     {
+@@ -4739,6 +4760,14 @@ int login_config_read (const char *cfgName)
+             {
+                 safestrncpy (main_server, w2, sizeof (main_server));
+             }
++            else if (strcmpi (w1, "account_name_option") == 0)
++            {
++                account_name_option = atoi (w2);
++            }
++            else if (strcmpi (w1, "account_name_letters") == 0)
++            {
++                safestrncpy (account_name_letters, w2, 1000);
++            }
+         }
+     }
+     fclose_ (fp);
+-- 
+2.1.0
+

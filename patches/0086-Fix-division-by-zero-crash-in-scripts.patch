@@ -1,0 +1,36 @@
+From 7905e8487429a80c97ae6a52dd1318c5af206528 Mon Sep 17 00:00:00 2001
+From: Andrei Karas <akaras@inbox.ru>
+Date: Sun, 5 Dec 2010 16:28:10 +0200
+Subject: [PATCH 086/226] Fix division by zero crash in scripts.
+
+Now if number divised by zero result is zero.
+---
+ src/map/script.c | 10 ++++++++--
+ 1 file changed, 8 insertions(+), 2 deletions(-)
+
+diff --git a/src/map/script.c b/src/map/script.c
+index e5f136b..99b77ea 100644
+--- a/src/map/script.c
++++ b/src/map/script.c
+@@ -7476,10 +7476,16 @@ void op_2num (struct script_state *st, int op, int i1, int i2)
+             i1 *= i2;
+             break;
+         case C_DIV:
+-            i1 /= i2;
++            if (i2)
++                i1 /= i2;
++            else
++                i1 = 0;
+             break;
+         case C_MOD:
+-            i1 %= i2;
++            if (i2)
++                i1 %= i2;
++            else
++                i1 = 0;
+             break;
+         case C_AND:
+             i1 &= i2;
+-- 
+2.1.0
+

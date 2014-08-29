@@ -1,0 +1,27 @@
+From 33c455f207e66aed6dfd75688d5824fca7822bed Mon Sep 17 00:00:00 2001
+From: Andrei Karas <akaras@inbox.ru>
+Date: Thu, 20 Jan 2011 01:00:23 +0200
+Subject: [PATCH 194/226] Remove some jp corrupted texts from array in script.c
+
+---
+ src/map/script.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/src/map/script.c b/src/map/script.c
+index dbc7450..af4c670 100644
+--- a/src/map/script.c
++++ b/src/map/script.c
+@@ -187,8 +187,8 @@ int scriptlabel_final (void *k __attribute__ ((unused)),
+ }
+ 
+ static char pos[11][100] =
+-    { "��", "��", "����", "�E��", "���[�u", "�C", "�A�N�Z�T���[1",
+-    "�A�N�Z�T���[2", "��2", "��3", "�������Ă��Ȃ�"
++    { "0", "1", "2", "3", "4", "5", "6",
++    "7", "8", "9", "10"
+ };
+ 
+ static struct Script_Config
+-- 
+2.1.0
+

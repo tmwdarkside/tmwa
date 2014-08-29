@@ -1,0 +1,111 @@
+From 137c381d99c3b360f7f60c955f6d5341626b84ca Mon Sep 17 00:00:00 2001
+From: Andrei Karas <akaras@inbox.ru>
+Date: Mon, 31 Jan 2011 05:50:18 +0200
+Subject: [PATCH 211/226] Dont show warning about unknown translation for npc
+ with hidden names.
+
+---
+ src/map/clif.c | 22 +++++++++++-----------
+ src/map/lang.c | 15 +++++++++++----
+ src/map/lang.h |  2 +-
+ 3 files changed, 23 insertions(+), 16 deletions(-)
+
+diff --git a/src/map/clif.c b/src/map/clif.c
+index b801b33..d3c59fc 100644
+--- a/src/map/clif.c
++++ b/src/map/clif.c
+@@ -7387,19 +7387,19 @@ void clif_parse_GetCharNameRequest (int fd, struct map_session_data *sd)
+         }
+             break;
+         case BL_NPC:
++        {
+             memcpy (WFIFOP (fd, 6), lang_pctrans (((struct npc_data *) bl)->name, sd), 24);
+-            {
+-                char *start = WFIFOP (fd, 6);
+-                char *end = strchr (start, '#');    // [fate] elim hashed out/invisible names for the client
+-                if (end)
+-                    while (*end)
+-                        *end++ = 0;
+-
+-                // [fate] Elim preceding underscores for (hackish) name position fine-tuning
+-                while (*start == '_')
+-                    *start++ = ' ';
+-            }
++            char *start = WFIFOP (fd, 6);
++            char *end = strchr (start, '#');    // [fate] elim hashed out/invisible names for the client
++            if (end)
++                while (*end)
++                    *end++ = 0;
++
++            // [fate] Elim preceding underscores for (hackish) name position fine-tuning
++            while (*start == '_')
++                *start++ = ' ';
+             WFIFOSET (fd, packet_len_table[0x95]);
++        }
+             break;
+         case BL_MOB:
+         {
+diff --git a/src/map/lang.c b/src/map/lang.c
+index a15f4a1..079913b 100644
+--- a/src/map/lang.c
++++ b/src/map/lang.c
+@@ -138,7 +138,7 @@ static int langsdb_readdb (void)
+     return 0;
+ }
+ 
+-const char* lang_trans(const char *str, int lng)
++const char* lang_trans(const char *str, int lng, int flg)
+ {
+     if (!str)
+         return 0;
+@@ -149,13 +149,15 @@ const char* lang_trans(const char *str, int lng)
+     char **strings = strdb_search (translate_db, str);
+     if (!strings)
+     {
+-        printf ("no translations for: %s\n", str);
++        if (flg)
++            printf ("no translations for: %s\n", str);
+         return str;
+     }
+ 
+     if (!strings[lng])
+     {
+-        printf ("no lang string (%s) for: %s\n", lang_langs[lng], str);
++        if (flg)
++            printf ("no lang string (%s) for: %s\n", lang_langs[lng], str);
+         return str;
+     }
+ 
+@@ -165,9 +167,14 @@ const char* lang_trans(const char *str, int lng)
+ const char* lang_pctrans(const char *str, TBL_PC *sd)
+ {
+     int lng = 0;
++    int flg = 1;
++    if (!str)
++        return 0;
+ 
++    if (*str == '#')
++        flg = 0;
+     if (sd)
+         lng = sd->status.language;
+ 
+-    return lang_trans(str, lng);
++    return lang_trans(str, lng, flg);
+ }
+\ No newline at end of file
+diff --git a/src/map/lang.h b/src/map/lang.h
+index 14fd877..74d9ff1 100644
+--- a/src/map/lang.h
++++ b/src/map/lang.h
+@@ -14,7 +14,7 @@ extern struct dbt *translate_db;
+ 
+ void do_init_langs ();
+ 
+-const char* lang_trans(const char *str, int lng);
++const char* lang_trans(const char *str, int lng, int flg);
+ 
+ const char* lang_pctrans(const char *str, TBL_PC *sd);
+ 
+-- 
+2.1.0
+

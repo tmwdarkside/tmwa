@@ -1,0 +1,25 @@
+From 063982061787f5c4e1050cf00e06479db1578e60 Mon Sep 17 00:00:00 2001
+From: Andrei Karas <akaras@inbox.ru>
+Date: Fri, 3 Dec 2010 23:26:18 +0200
+Subject: [PATCH 076/226] Fix compilation warning in magic-stmt.c
+
+---
+ src/map/magic-stmt.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/src/map/magic-stmt.c b/src/map/magic-stmt.c
+index dc85331..d1e4885 100644
+--- a/src/map/magic-stmt.c
++++ b/src/map/magic-stmt.c
+@@ -1000,7 +1000,7 @@ static int op_gain_exp (env_t * env __attribute__ ((unused)), int args_nr __attr
+ }
+ 
+ //UFB
+-static int op_resurrect (env_t * env, int args_nr, val_t * args)
++static int op_resurrect (env_t * env __attribute__ ((unused)), int args_nr __attribute__ ((unused)), val_t * args)
+ {
+     if (!args)
+         return 1;
+-- 
+2.1.0
+

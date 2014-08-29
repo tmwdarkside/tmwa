@@ -1,0 +1,38 @@
+From 2f593895290775e37fbd95de84ed89db344e6108 Mon Sep 17 00:00:00 2001
+From: Andrei Karas <akaras@inbox.ru>
+Date: Tue, 4 Jan 2011 18:45:17 +0200
+Subject: [PATCH 169/226] Fix reading minimum limit for hair type and color.
+
+---
+ src/char/char.c | 8 ++++----
+ 1 file changed, 4 insertions(+), 4 deletions(-)
+
+diff --git a/src/char/char.c b/src/char/char.c
+index 72bbf7b..59f90c9 100644
+--- a/src/char/char.c
++++ b/src/char/char.c
+@@ -4170,8 +4170,8 @@ int char_config_read (const char *cfgName)
+         else if (strcmpi (w1, "min_hair_style") == 0)
+         {
+             min_hair_style = atoi (w2);
+-            if (min_hair_style <= 0)
+-                min_hair_style = 1;
++            if (min_hair_style < 0)
++                min_hair_style = 0;
+         }
+         else if (strcmpi (w1, "max_hair_style") == 0)
+         {
+@@ -4182,8 +4182,8 @@ int char_config_read (const char *cfgName)
+         else if (strcmpi (w1, "min_hair_color") == 0)
+         {
+             min_hair_color = atoi (w2);
+-            if (min_hair_color <= 0)
+-                min_hair_color = 1;
++            if (min_hair_color < 0)
++                min_hair_color = 0;
+         }
+         else if (strcmpi (w1, "max_hair_color") == 0)
+         {
+-- 
+2.1.0
+

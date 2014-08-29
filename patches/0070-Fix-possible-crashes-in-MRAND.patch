@@ -1,0 +1,26 @@
+From efa7e79fbea5af0847eb7411a2fc62318878d984 Mon Sep 17 00:00:00 2001
+From: Andrei Karas <akaras@inbox.ru>
+Date: Thu, 2 Dec 2010 04:50:21 +0200
+Subject: [PATCH 070/226] Fix possible crashes in MRAND.
+
+---
+ src/common/utils.h | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/src/common/utils.h b/src/common/utils.h
+index ede975e..57749c5 100644
+--- a/src/common/utils.h
++++ b/src/common/utils.h
+@@ -38,7 +38,7 @@ void dump (unsigned char *buffer, int num);
+  * MRAND(10), returns 0-9.
+  * MPRAND(5,10) returns 5-14.
+  */
+-#define MRAND(mod) (int) (mt_random() % (mod))
++#define MRAND(mod) (int) (mod ? mt_random() % (mod) : 0)
+ #define MPRAND(add, mod) add + MRAND(mod)
+ 
+ #endif // _UTILS_H_
+\ No newline at end of file
+-- 
+2.1.0
+

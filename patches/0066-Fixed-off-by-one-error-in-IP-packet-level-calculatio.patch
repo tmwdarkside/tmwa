@@ -1,0 +1,26 @@
+From 9282e4fd30c1372aeef055a06730fdeb011b9f4f Mon Sep 17 00:00:00 2001
+From: MadCamel <madcamel@gmail.com>
+Date: Wed, 1 Dec 2010 18:50:06 +0200
+Subject: [PATCH 066/226] Fixed off by one error in IP packet level
+ calculation.
+
+---
+ src/map/clif.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/src/map/clif.c b/src/map/clif.c
+index fadc9dd..4a825c7 100644
+--- a/src/map/clif.c
++++ b/src/map/clif.c
+@@ -7319,7 +7319,7 @@ void clif_parse_GetCharNameRequest (int fd, struct map_session_data *sd __attrib
+             }
+ 
+ #if 0
+-            if (pc_isGM(sd) > battle_config.hack_info_GM_level)
++            if (pc_isGM(sd) >= battle_config.hack_info_GM_level)
+             {
+                 in_addr_t ip = ssd->ip;
+                 WFIFOW (fd, 0) = 0x20C;
+-- 
+2.1.0
+

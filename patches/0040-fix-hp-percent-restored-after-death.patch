@@ -1,0 +1,25 @@
+From b6c47d983cd25b58490c111a19ba96c499540647 Mon Sep 17 00:00:00 2001
+From: Andrei Karas <akaras@inbox.ru>
+Date: Wed, 24 Nov 2010 00:26:01 +0200
+Subject: [PATCH 040/226] fix hp percent restored after death.
+
+---
+ src/map/pc.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/src/map/pc.c b/src/map/pc.c
+index 504c952..04cf4b5 100644
+--- a/src/map/pc.c
++++ b/src/map/pc.c
+@@ -348,7 +348,7 @@ int pc_setrestartvalue (struct map_session_data *sd, int type)
+     }
+     else
+     {
+-        if (s_class.job <= 5 && battle_config.restart_hp_rate < 50)
++        if (s_class.job <= 5 && battle_config.restart_hp_rate == 0)
+         {                       //�m�r�͔�������
+             sd->status.hp = (sd->status.max_hp) / 2;
+         }
+-- 
+2.1.0
+

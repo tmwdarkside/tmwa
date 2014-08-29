@@ -1,0 +1,65 @@
+From 23dbdef058dce25c3c164312abe2aa31e6786a1b Mon Sep 17 00:00:00 2001
+From: Andrei Karas <akaras@inbox.ru>
+Date: Mon, 10 Jan 2011 22:03:28 +0200
+Subject: [PATCH 181/226] Add to items dont sell attribute.
+
+---
+ doc/item_db.txt  | 1 +
+ src/map/clif.c   | 2 +-
+ src/map/itemdb.h | 1 +
+ src/map/npc.c    | 2 ++
+ 4 files changed, 5 insertions(+), 1 deletion(-)
+
+diff --git a/doc/item_db.txt b/doc/item_db.txt
+index 930fac0..74abc04 100644
+--- a/doc/item_db.txt
++++ b/doc/item_db.txt
+@@ -15,6 +15,7 @@ Attr: Item attribute flags
+    64   0x0040   0000 0000 0100 0000   Dont equip
+   128   0x0080   0000 0000 1000 0000   Dont remove in magic use
+   256   0x0100   0000 0001 0000 0000   Dont move to guild storage
++  512   0x0200   0000 0010 0000 0000   Dont sell
+ 
+ Type: 
+     0   Usable item (after using removed).
+diff --git a/src/map/clif.c b/src/map/clif.c
+index 5d27c1b..e0490d9 100644
+--- a/src/map/clif.c
++++ b/src/map/clif.c
+@@ -1725,7 +1725,7 @@ int clif_selllist (struct map_session_data *sd)
+         if (sd->status.inventory[i].nameid > 0 && sd->inventory_data[i])
+         {
+             val = sd->inventory_data[i]->value_sell;
+-            if (val < 0)
++            if (val < 0 || (sd->inventory_data[i]->attr & ITEM_ATTR_DONTSELL))
+                 continue;
+             WFIFOW (fd, 4 + c * 10) = i + 2;
+             WFIFOL (fd, 6 + c * 10) = val;
+diff --git a/src/map/itemdb.h b/src/map/itemdb.h
+index fefdfea..476939e 100644
+--- a/src/map/itemdb.h
++++ b/src/map/itemdb.h
+@@ -13,6 +13,7 @@
+ #define ITEM_ATTR_DONTEQUIP 64
+ #define ITEM_ATTR_DONTREMOVEMAGIC 128
+ #define ITEM_ATTR_DONTMOVETOGSTORAGE 256
++#define ITEM_ATTR_DONTSELL 512
+ 
+ struct item_data
+ {
+diff --git a/src/map/npc.c b/src/map/npc.c
+index d3ded4a..ef8e4bd 100644
+--- a/src/map/npc.c
++++ b/src/map/npc.c
+@@ -1263,6 +1263,8 @@ int npc_selllist (struct map_session_data *sd, int n,
+             sd->status.inventory[item_list[i * 2] - 2].amount <
+             item_list[i * 2 + 1])
+             return 1;
++        if (!sd->inventory_data[i] || sd->inventory_data[i]->attr & ITEM_ATTR_DONTSELL)
++            return 3;           // cant sell restricted item
+         if (sd->trade_partner != 0)
+             return 2;           // cant sell while trading
+         if (itemdb_value_notoc (nameid))
+-- 
+2.1.0
+

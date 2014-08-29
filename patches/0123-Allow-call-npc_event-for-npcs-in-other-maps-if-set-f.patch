@@ -1,0 +1,26 @@
+From 98ca40934b2776e618c049c592221fb338283800 Mon Sep 17 00:00:00 2001
+From: Andrei Karas <akaras@inbox.ru>
+Date: Sat, 18 Dec 2010 21:57:09 +0200
+Subject: [PATCH 123/226] Allow call npc_event for npcs in other maps if set
+ flag to 2.
+
+---
+ src/map/npc.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/src/map/npc.c b/src/map/npc.c
+index 77460f5..e5a3470 100644
+--- a/src/map/npc.c
++++ b/src/map/npc.c
+@@ -771,7 +771,7 @@ int npc_event (struct map_session_data *sd, const char *eventname,
+ 
+     xs = nd->u.scr.xs;
+     ys = nd->u.scr.ys;
+-    if (xs >= 0 && ys >= 0)
++    if (mob_kill < 2 && xs >= 0 && ys >= 0)
+     {
+         if (nd->bl.m != sd->bl.m)
+             return 1;
+-- 
+2.1.0
+

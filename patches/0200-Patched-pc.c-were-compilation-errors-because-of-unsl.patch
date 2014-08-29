@@ -1,0 +1,26 @@
+From a3ee0d2700478f112e47b7664a970d354e4905ec Mon Sep 17 00:00:00 2001
+From: necromonger <necromonger@Necromonger.UNIVERSE>
+Date: Sun, 23 Jan 2011 00:07:34 +0300
+Subject: [PATCH 200/226] Patched pc.c (were compilation errors because of
+ unslashed comment)
+
+---
+ src/map/pc.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/src/map/pc.c b/src/map/pc.c
+index 5b58c56..9af00bd 100644
+--- a/src/map/pc.c
++++ b/src/map/pc.c
+@@ -4885,7 +4885,7 @@ static int pc_walk (int tid, unsigned int tick, int id, int data)
+                     sd->party_hp = -1;
+             }
+         }
+-        if (sd->status.option & 4)  クローキングの消滅検査 
++        if (sd->status.option & 4) // クローキングの消滅検査 
+             skill_check_cloaking (&sd->bl);
+           /* ディボーション検査 */ 
+         for (i = 0; i < 5; i++)
+-- 
+2.1.0
+

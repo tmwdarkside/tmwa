@@ -1,0 +1,25 @@
+From 78423f27a9223b81765b235044546e421933537e Mon Sep 17 00:00:00 2001
+From: Andrei Karas <akaras@inbox.ru>
+Date: Tue, 4 Jan 2011 18:42:24 +0200
+Subject: [PATCH 168/226] Fix after cherry-pick commit from tmw.
+
+---
+ src/map/script.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/src/map/script.c b/src/map/script.c
+index 43ef498..d950d6b 100644
+--- a/src/map/script.c
++++ b/src/map/script.c
+@@ -7315,7 +7315,7 @@ BUILDIN_FUNC(get_activated_pool_skills)
+ //extern int skill_pool_skills[];
+ //extern int skill_pool_skills_size;
+ 
+-BUILDIN_FUNC(buildin_get_unactivated_pool_skills)
++BUILDIN_FUNC(get_unactivated_pool_skills)
+ {
+     struct map_session_data *sd = script_rid2sd (st);
+     int  i, count = 0;
+-- 
+2.1.0
+

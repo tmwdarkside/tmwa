@@ -1,0 +1,116 @@
+From 72879863e74b1d178f5395108fea7e9e59d352dc Mon Sep 17 00:00:00 2001
+From: Andrei Karas <akaras@inbox.ru>
+Date: Thu, 18 Nov 2010 03:42:12 +0200
+Subject: [PATCH 029/226] Fix some compilation warnings.
+
+---
+ src/common/utils.h |  5 +++++
+ src/map/itemdb.c   |  2 +-
+ src/map/mob.c      |  2 +-
+ src/map/pc.h       |  2 +-
+ src/map/script.c   | 12 ++++++------
+ 5 files changed, 14 insertions(+), 9 deletions(-)
+
+diff --git a/src/common/utils.h b/src/common/utils.h
+index 10c10ad..ede975e 100644
+--- a/src/common/utils.h
++++ b/src/common/utils.h
+@@ -1,5 +1,8 @@
+ #include "mt_rand.h"
+ 
++#ifndef _UTILS_H_
++#define _UTILS_H_
++
+ #ifndef NULL
+ #define NULL (void *)0
+ #endif
+@@ -37,3 +40,5 @@ void dump (unsigned char *buffer, int num);
+  */
+ #define MRAND(mod) (int) (mt_random() % (mod))
+ #define MPRAND(add, mod) add + MRAND(mod)
++
++#endif // _UTILS_H_
+\ No newline at end of file
+diff --git a/src/map/itemdb.c b/src/map/itemdb.c
+index 33f9bfd..5f11f51 100644
+--- a/src/map/itemdb.c
++++ b/src/map/itemdb.c
+@@ -42,7 +42,7 @@ static int itemdb_read_randomitem ();
+ static int itemdb_read_itemavail (void);
+ static int itemdb_read_itemnametable (void);
+ static int itemdb_read_noequip (void);
+-void itemdb_reload (void);
++//void itemdb_reload (void);
+ 
+ /*==========================================
+  * ñºëOÇ≈åüçıóp
+diff --git a/src/map/mob.c b/src/map/mob.c
+index 6aff79f..45ecbe0 100644
+--- a/src/map/mob.c
++++ b/src/map/mob.c
+@@ -44,7 +44,7 @@ struct mob_db mob_db[2001];
+ static int distance (int, int, int, int);
+ static int mob_makedummymobdb (int);
+ static int mob_timer (int, unsigned int, int, int);
+-int  mobskill_use (struct mob_data *md, unsigned int tick, int event);
++//int  mobskill_use (struct mob_data *md, unsigned int tick, int event);
+ int  mobskill_deltimer (struct mob_data *md);
+ int  mob_skillid2skillidx (int class, int skillid);
+ int  mobskill_use_id (struct mob_data *md, struct block_list *target,
+diff --git a/src/map/pc.h b/src/map/pc.h
+index 595670d..f51ff5b 100644
+--- a/src/map/pc.h
++++ b/src/map/pc.h
+@@ -132,7 +132,7 @@ int  pc_resetskill (struct map_session_data *);
+ int  pc_equipitem (struct map_session_data *, int, int);
+ int  pc_unequipitem (struct map_session_data *, int, int);
+ int  pc_unequipinvyitem (struct map_session_data *, int, int);
+-int  pc_checkitem (struct map_session_data *);
++//int  pc_checkitem (struct map_session_data *);
+ int  pc_useitem (struct map_session_data *, int);
+ 
+ int  pc_damage (struct block_list *, struct map_session_data *, int);
+diff --git a/src/map/script.c b/src/map/script.c
+index 5cb7c9f..14a4dd3 100644
+--- a/src/map/script.c
++++ b/src/map/script.c
+@@ -283,13 +283,13 @@ int  buildin_get_activated_pool_skills (struct script_state *st);   // [fate]
+ int  buildin_activate_pool_skill (struct script_state *st); // [fate]
+ int  buildin_deactivate_pool_skill (struct script_state *st);   // [fate]
+ int  buildin_check_pool_skill (struct script_state *st);    // [fate]
+-int  buildin_getskilllist (struct script_state *st);
+-int  buildin_getskilllist (struct script_state *st);
++//int  buildin_getskilllist (struct script_state *st);
++//int  buildin_getskilllist (struct script_state *st);
+ int  buildin_clearitem (struct script_state *st);
+ int  buildin_classchange (struct script_state *st);
+ int  buildin_misceffect (struct script_state *st);
+ int  buildin_soundeffect (struct script_state *st);
+-int  buildin_setcastledata (struct script_state *st);
++//int  buildin_setcastledata (struct script_state *st);
+ int  buildin_mapwarp (struct script_state *st);
+ int  buildin_inittimer (struct script_state *st);
+ int  buildin_stoptimer (struct script_state *st);
+@@ -740,7 +740,7 @@ struct
+     {
+ NULL, NULL, NULL},};
+ 
+-int  buildin_message (struct script_state *st); // [MouseJstr]
++//int  buildin_message (struct script_state *st); // [MouseJstr]
+ 
+ enum
+ {
+@@ -6574,8 +6574,8 @@ int buildin_get_activated_pool_skills (struct script_state *st)
+     return 0;
+ }
+ 
+-extern int skill_pool_skills[];
+-extern int skill_pool_skills_size;
++//extern int skill_pool_skills[];
++//extern int skill_pool_skills_size;
+ 
+ int buildin_get_pool_skills (struct script_state *st)
+ {
+-- 
+2.1.0
+

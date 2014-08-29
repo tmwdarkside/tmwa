@@ -1,0 +1,50 @@
+From 4dc53496d5629ef198ba89edb62351e63e26266f Mon Sep 17 00:00:00 2001
+From: Andrei Karas <akaras@inbox.ru>
+Date: Sat, 22 Jan 2011 18:10:27 +0200
+Subject: [PATCH 198/226] Add option to make file to profile char server.
+
+---
+ make.defs         | 1 +
+ makegprof         | 4 ----
+ src/char/Makefile | 2 +-
+ 3 files changed, 2 insertions(+), 5 deletions(-)
+ delete mode 100755 makegprof
+
+diff --git a/make.defs b/make.defs
+index d8777ca..481b5bf 100644
+--- a/make.defs
++++ b/make.defs
+@@ -6,6 +6,7 @@ endif
+ 
+ #STATIC=-static
+ #MAPPROFILE=-pg -fno-inline
++#CHARPROFILE=-pg -fno-inline
+ 
+ LEX=flex
+ BISON=bison
+diff --git a/makegprof b/makegprof
+deleted file mode 100755
+index b09cf1f..0000000
+--- a/makegprof
++++ /dev/null
+@@ -1,4 +0,0 @@
+-#!/bin/sh
+-
+-gprof map-server >gprof.txt
+-cat gprof.txt | tools/gprof2dot.py | dot -Tpng -o gprof.png
+diff --git a/src/char/Makefile b/src/char/Makefile
+index 16b7964..5a87688 100644
+--- a/src/char/Makefile
++++ b/src/char/Makefile
+@@ -6,7 +6,7 @@ txt: char-server
+ COMMON_OBJ = ../common/core.o ../common/socket.o ../common/timer.o ../common/db.o ../common/lock.o ../common/malloc.o ../common/showmsg.o ../common/strlib.o ../common/mt_rand.o
+ COMMON_H = ../common/core.h ../common/socket.h ../common/timer.h ../common/mmo.h ../common/db.h ../common/lock.h ../common/timer.h ../common/malloc.h ../common/showmsg.h ../common/strlib.h ../common/mt_rand.h
+ char-server: char.o inter.o int_party.o int_guild.o int_storage.o $(COMMON_OBJ)
+-	$(CC) $(CFLAGS) -o ../../$@ $^
++	$(CC) ${CHARPROFILE} $(CFLAGS) -o ../../$@ $^
+ 
+ char.o: char.c char.h inter.h $(COMMON_H) ../common/version.h
+ inter.o: inter.c inter.h int_party.h int_guild.h int_storage.h char.h $(COMMON_H)
+-- 
+2.1.0
+

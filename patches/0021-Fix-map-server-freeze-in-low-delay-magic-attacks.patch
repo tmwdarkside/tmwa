@@ -1,0 +1,82 @@
+From e2266226ec6a651a9562f8b0d813e77f960d5c7c Mon Sep 17 00:00:00 2001
+From: Andrei Karas <akaras@inbox.ru>
+Date: Mon, 15 Nov 2010 04:19:00 +0200
+Subject: [PATCH 021/226] Fix map server freeze in low delay magic attacks.
+
+Also try remove attack timer before creating new attack timer.
+---
+ src/map/pc.c | 24 +++++++++++++++++++++++-
+ src/map/pc.h |  1 +
+ 2 files changed, 24 insertions(+), 1 deletion(-)
+
+diff --git a/src/map/pc.c b/src/map/pc.c
+index c984fd0..e8037ff 100644
+--- a/src/map/pc.c
++++ b/src/map/pc.c
+@@ -92,6 +92,8 @@ static unsigned int equip_pos[11] =
+     0x0002, 0x8000
+ };
+ 
++int pc_attack_timer (int tid, unsigned int tick, int id, int data);
++
+ //static struct dbt *gm_account_db;
+ static struct gm_account *gm_account = NULL;
+ static int GM_num = 0;
+@@ -210,6 +212,19 @@ int pc_delinvincibletimer (struct map_session_data *sd)
+     return 0;
+ }
+ 
++int pc_delattacktimer (struct map_session_data *sd)
++{
++    nullpo_retr (0, sd);
++
++    if (sd->attacktimer != -1)
++    {
++        delete_timer (sd->attacktimer, pc_attack_timer);
++        sd->attacktimer = -1;
++    }
++
++    return 0;
++}
++
+ static int pc_spiritball_timer (int tid, unsigned int tick, int id, int data)
+ {
+     struct map_session_data *sd;
+@@ -4810,7 +4825,9 @@ int pc_attack_timer (int tid, unsigned int tick, int id, int data)
+             printf ("pc_attack_timer %d != %d\n", sd->attacktimer, tid);
+         return 0;
+     }
+-    sd->attacktimer = -1;
++    if (sd->attacktimer != -1)
++        pc_delattacktimer (sd);
++//    sd->attacktimer = -1;
+ 
+     if (sd->bl.prev == NULL)
+         return 0;
+@@ -4860,6 +4877,11 @@ int pc_attack_timer (int tid, unsigned int tick, int id, int data)
+         return 0;               // cannot attack yet
+ 
+     attack_spell_delay = sd->attack_spell_delay;
++    if (attack_spell_delay < battle_config.max_aspd)
++    {
++        attack_spell_delay = battle_config.max_aspd;
++    }
++
+     if (sd->attack_spell_override   // [Fate] If we have an active attack spell, use that
+         && spell_attack (id, sd->attacktarget))
+     {
+diff --git a/src/map/pc.h b/src/map/pc.h
+index ec5afb9..595670d 100644
+--- a/src/map/pc.h
++++ b/src/map/pc.h
+@@ -192,6 +192,7 @@ struct pc_base_job pc_calc_base_job (int b_class);  //
+ int  pc_read_gm_account (int fd);
+ int  pc_setinvincibletimer (struct map_session_data *sd, int);
+ int  pc_delinvincibletimer (struct map_session_data *sd);
++int  pc_delattacktimer (struct map_session_data *sd);
+ int  pc_addspiritball (struct map_session_data *sd, int, int);
+ int  pc_delspiritball (struct map_session_data *sd, int, int);
+ int  pc_logout (struct map_session_data *sd);   // [fate] Player logs out
+-- 
+2.1.0
+

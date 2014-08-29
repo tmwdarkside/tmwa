@@ -1,0 +1,56 @@
+From 97f702c8fb7f0b498160cd33751711b0b51fe1b6 Mon Sep 17 00:00:00 2001
+From: Andrei Karas <akaras@inbox.ru>
+Date: Thu, 30 Dec 2010 18:13:35 +0200
+Subject: [PATCH 155/226] Translate npc names before sending to client.
+
+---
+ src/map/Makefile | 2 +-
+ src/map/clif.c   | 5 +++--
+ 2 files changed, 4 insertions(+), 3 deletions(-)
+
+diff --git a/src/map/Makefile b/src/map/Makefile
+index 40fab1c..1a64c68 100644
+--- a/src/map/Makefile
++++ b/src/map/Makefile
+@@ -32,7 +32,7 @@ obj/magic.o: magic.c magic.h magic-expr.h magic-interpreter.h chrif.h clif.h npc
+ obj/map.o: map.c map.h lang.h chrif.h clif.h npc.h pc.h mob.h chat.h skill.h itemdb.h storage.h party.h atcommand.h ../common/core.h ../common/timer.h ../common/db.h ../common/grfio.h ../common/mmo.h
+ obj/lang.o: lang.c lang.h ../common/core.h ../common/timer.h ../common/db.h ../common/grfio.h ../common/mmo.h
+ obj/chrif.o: chrif.c map.h battle.h chrif.h clif.h intif.h pc.h npc.h ../common/socket.h ../common/timer.h ../common/mmo.h
+-obj/clif.o: magic.h clif.c map.h chrif.h clif.h mob.h intif.h pc.h npc.h itemdb.h chat.h script.h storage.h party.h guild.h atcommand.h atcommand.h ../common/socket.h ../common/timer.h ../common/mmo.h ../common/version.h tmw.h
++obj/clif.o: magic.h clif.c lang.h map.h chrif.h clif.h mob.h intif.h pc.h npc.h itemdb.h chat.h script.h storage.h party.h guild.h atcommand.h atcommand.h ../common/socket.h ../common/timer.h ../common/mmo.h ../common/version.h tmw.h
+ obj/pc.o: pc.c map.h clif.h intif.h pc.h npc.h mob.h itemdb.h battle.h skill.h script.h party.h guild.h trade.h storage.h chat.h ../common/timer.h ../common/mmo.h ../common/db.h
+ obj/npc.o: npc.c map.h npc.h clif.h pc.h script.h mob.h itemdb.h battle.h ../common/db.h ../common/timer.h ../common/mmo.h
+ obj/chat.o: chat.c map.h clif.h pc.h chat.h ../common/db.h ../common/mmo.h
+diff --git a/src/map/clif.c b/src/map/clif.c
+index 0fb3b63..20c0691 100644
+--- a/src/map/clif.c
++++ b/src/map/clif.c
+@@ -25,6 +25,7 @@
+ #include "nullpo.h"
+ #include "md5calc.h"
+ 
++#include "lang.h"
+ #include "strlib.h"
+ #include "atcommand.h"
+ #include "battle.h"
+@@ -7264,7 +7265,7 @@ void clif_parse_QuitGame (int fd, struct map_session_data *sd)
+  *
+  *------------------------------------------
+  */
+-void clif_parse_GetCharNameRequest (int fd, struct map_session_data *sd __attribute__ ((unused)))
++void clif_parse_GetCharNameRequest (int fd, struct map_session_data *sd)
+ {
+     struct block_list *bl;
+     int  account_id;
+@@ -7350,7 +7351,7 @@ void clif_parse_GetCharNameRequest (int fd, struct map_session_data *sd __attrib
+         }
+             break;
+         case BL_NPC:
+-            memcpy (WFIFOP (fd, 6), ((struct npc_data *) bl)->name, 24);
++            memcpy (WFIFOP (fd, 6), lang_pctrans (((struct npc_data *) bl)->name, sd), 24);
+             {
+                 char *start = WFIFOP (fd, 6);
+                 char *end = strchr (start, '#');    // [fate] elim hashed out/invisible names for the client
+-- 
+2.1.0
+

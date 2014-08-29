@@ -1,0 +1,69 @@
+From 44a5d293bbb680f23baf7badd1a42cbffd526368 Mon Sep 17 00:00:00 2001
+From: Andrei Karas <akaras@inbox.ru>
+Date: Mon, 20 Dec 2010 21:37:20 +0200
+Subject: [PATCH 127/226] Add script command recovery.
+
+---
+ src/map/script.c | 32 ++++++++++++++++++++++++++++++++
+ 1 file changed, 32 insertions(+)
+
+diff --git a/src/map/script.c b/src/map/script.c
+index ce209de..8559929 100644
+--- a/src/map/script.c
++++ b/src/map/script.c
+@@ -426,6 +426,7 @@ int  buildin_spell (struct script_state *st); // [4144]
+ int  buildin_npcclick (struct script_state *st); // [4144]
+ int  buildin_npcattach (struct script_state *st); // [4144]
+ int  buildin_dispbottom (struct script_state *st); //added from jA [Lupus]
++int  buildin_recovery (struct script_state *st); // [4144]
+ 
+ void push_val (struct script_stack *stack, int type, int val);
+ int  run_func (struct script_state *st);
+@@ -875,6 +876,8 @@ struct
+     buildin_npcattach, "npcattach", "s"}, // [4144]
+     {
+     buildin_dispbottom, "dispbottom", "s"}, //added from jA [Lupus]
++    {
++    buildin_recovery, "recovery", "*"}, // [4144]
+         // End Additions
+     {
+ NULL, NULL, NULL},};
+@@ -8146,6 +8149,35 @@ BUILDIN_FUNC(dispbottom)
+     return 0;
+ }
+ 
++BUILDIN_FUNC(recovery)
++{
++    TBL_PC *sd;
++
++    if (!script_hasdata(st, 2))
++        sd = script_rid2sd(st);
++    else
++        sd = map_nick2sd (script_getstr(st, 2));
++    if (!sd)
++        return 0;
++
++    if (pc_isdead(sd))
++    {
++        sd->status.hp = sd->status.max_hp;
++        sd->status.sp = sd->status.max_sp;
++        pc_setstand (sd);
++        if (battle_config.pc_invincible_time > 0)
++            pc_setinvincibletimer (sd, battle_config.pc_invincible_time);
++        clif_updatestatus (sd, SP_HP);
++        clif_updatestatus (sd, SP_SP);
++        clif_resurrection (&sd->bl, 1);
++    }
++    else
++    {
++        pc_heal (sd, sd->status.max_hp - sd->status.hp, sd->status.max_sp - sd->status.sp);
++    }
++    return 0;
++}
++
+ //
+ // ��s��main
+ //
+-- 
+2.1.0
+

@@ -1,0 +1,49 @@
+From 988689835e34b8e9bf3ad573b2e96883eebe642d Mon Sep 17 00:00:00 2001
+From: Andrei Karas <akaras@inbox.ru>
+Date: Sun, 5 Dec 2010 23:18:12 +0200
+Subject: [PATCH 089/226] Add flag what allow not die slave monster if master
+ dead.
+
+---
+ doc/mob_db.txt |  1 +
+ src/map/mob.c  | 12 +++++++++++-
+ 2 files changed, 12 insertions(+), 1 deletion(-)
+
+diff --git a/doc/mob_db.txt b/doc/mob_db.txt
+index f3a712c..5f850ca 100644
+--- a/doc/mob_db.txt
++++ b/doc/mob_db.txt
+@@ -43,6 +43,7 @@ Mode        mob mode
+     TARGETWEAK         | 0x4000 |  16384
+     RANDOMTARGET       | 0x8000 |  32768 (not implemented)
+     SKILLATTACKONLY    | 0x10000|  65536
++    WITHOUTMASTER      | 0x20000|  131072
+ 
+ Speed       move speed. less is better speed.
+ Adelay      
+diff --git a/src/map/mob.c b/src/map/mob.c
+index 97570eb..b108662 100644
+--- a/src/map/mob.c
++++ b/src/map/mob.c
+@@ -2640,7 +2640,17 @@ int mob_deleteslave_sub (struct block_list *bl, va_list ap)
+ 
+     id = va_arg (ap, int);
+     if (md->master_id > 0 && md->master_id == id)
+-        mob_damage (NULL, md, md->hp, 1);
++    {
++        if (mob_db[md->class].mode & 0x20000)
++        {
++            md->master_id = 0;
++            md->master_dist = 0;
++        }
++        else
++        {
++            mob_damage (NULL, md, md->hp, 1);
++        }
++    }
+     return 0;
+ }
+ 
+-- 
+2.1.0
+

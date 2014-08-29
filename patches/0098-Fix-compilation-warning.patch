@@ -1,0 +1,39 @@
+From 3a4565cdd1eb25717320ece9d1d44f8eb9711bc1 Mon Sep 17 00:00:00 2001
+From: Andrei Karas <akaras@inbox.ru>
+Date: Sun, 12 Dec 2010 00:02:46 +0200
+Subject: [PATCH 098/226] Fix compilation warning.
+
+---
+ src/map/map.c | 2 +-
+ src/map/map.h | 2 +-
+ 2 files changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/src/map/map.c b/src/map/map.c
+index aa96b42..18c343e 100644
+--- a/src/map/map.c
++++ b/src/map/map.c
+@@ -1577,7 +1577,7 @@ void map_removenpc (void)
+  * mapñºÇ©ÇÁmapî‘çÜÇ÷ïœä∑
+  *------------------------------------------
+  */
+-int map_mapname2mapid (char *name)
++int map_mapname2mapid (const char *name)
+ {
+     if (!name)
+         return -1;
+diff --git a/src/map/map.h b/src/map/map.h
+index 5ece329..a42f4cd 100644
+--- a/src/map/map.h
++++ b/src/map/map.h
+@@ -791,7 +791,7 @@ char *map_charid2nick (int);
+ 
+ struct map_session_data *map_id2sd (int);
+ struct block_list *map_id2bl (int);
+-int  map_mapname2mapid (char *);
++int  map_mapname2mapid (const char *);
+ int  map_mapname2ipport (char *, int *, int *);
+ int  map_setipport (char *name, unsigned long ip, int port);
+ int  map_eraseipport (char *name, unsigned long ip, int port);
+-- 
+2.1.0
+

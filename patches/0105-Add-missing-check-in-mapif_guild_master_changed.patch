@@ -1,0 +1,75 @@
+From 91b8afd5debd507cdbbc29219f17c6840085fb3b Mon Sep 17 00:00:00 2001
+From: Andrei Karas <akaras@inbox.ru>
+Date: Wed, 15 Dec 2010 18:13:55 +0200
+Subject: [PATCH 105/226] Add missing check in mapif_guild_master_changed.
+
+---
+ src/char/int_guild.c |  3 +++
+ src/map/script.c     | 23 +++++++++++++++++++++++
+ 2 files changed, 26 insertions(+)
+
+diff --git a/src/char/int_guild.c b/src/char/int_guild.c
+index e3041dd..21e0762 100644
+--- a/src/char/int_guild.c
++++ b/src/char/int_guild.c
+@@ -1094,6 +1094,9 @@ int mapif_guild_emblem (struct guild *g)
+ 
+ int mapif_guild_master_changed(struct guild *g, int aid, int cid)
+ {
++    if (!g)
++        return 0;
++
+     unsigned char buf[14];
+     WBUFW(buf, 0) = 0x3843;
+     WBUFL(buf, 2) = g->guild_id;
+diff --git a/src/map/script.c b/src/map/script.c
+index 5a8ad17..62735bc 100644
+--- a/src/map/script.c
++++ b/src/map/script.c
+@@ -285,6 +285,7 @@ int  buildin_checkoption (struct script_state *st);
+ int  buildin_setoption (struct script_state *st);
+ int  buildin_guildgetexp (struct script_state *st);
+ int  buildin_guildchangegm (struct script_state *st);
++int  buildin_logmes (struct script_state *st);
+ int  buildin_setcart (struct script_state *st);
+ int  buildin_checkcart (struct script_state *st);   // check cart [Valaris]
+ int  buildin_setfalcon (struct script_state *st);
+@@ -590,6 +591,8 @@ struct
+     {
+     buildin_guildchangegm, "guildchangegm", "is"},
+     {
++    buildin_logmes, "logmes", "s"},
++    {
+     buildin_setcart, "setcart", ""},
+     {
+     buildin_checkcart, "checkcart", "*"},   //fixed by Lupus (added '*')
+@@ -4323,6 +4326,26 @@ BUILDIN_FUNC(guildgetexp)
+ }
+ 
+ /*==========================================
++ * Allows player to write NPC logs (i.e. Bank NPC, etc) [Lupus]
++ *------------------------------------------*/
++BUILDIN_FUNCU(logmes)
++{
++//  const char *str;
++//  TBL_PC* sd;
++
++//    if (log_config.npc <= 0)
++//        return 0;
++
++//  sd = script_rid2sd(st);
++//  if (sd == NULL)
++//      return 1;
++
++//  str = script_getstr(st, 2);
++//  log_npc(sd, str);
++//  return 0;
++}
++
++/*==========================================
+  * Changes the guild master of a guild [Skotlex]
+  *------------------------------------------*/
+ BUILDIN_FUNC(guildchangegm)
+-- 
+2.1.0
+

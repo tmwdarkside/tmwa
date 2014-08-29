@@ -1,0 +1,57 @@
+From fe2fd8c8fea506e72e80656f7f118f0f9b363753 Mon Sep 17 00:00:00 2001
+From: Andrei Karas <akaras@inbox.ru>
+Date: Mon, 20 Dec 2010 21:57:32 +0200
+Subject: [PATCH 128/226] Add additional checks to npc interaction script
+ commands.
+
+---
+ src/map/script.c | 12 ++++++++++--
+ 1 file changed, 10 insertions(+), 2 deletions(-)
+
+diff --git a/src/map/script.c b/src/map/script.c
+index 8559929..0f19c63 100644
+--- a/src/map/script.c
++++ b/src/map/script.c
+@@ -4895,6 +4895,10 @@ BUILDIN_FUNC(killmonsterall)
+  */
+ BUILDIN_FUNC(doevent)
+ {
++    struct map_session_data *sd = script_rid2sd (st);
++    if (!sd || sd->npc_id != 0)
++        return 0;
++
+     char *event;
+     event = conv_str (st, &(st->stack->stack_data[st->start + 2]));
+     npc_event (map_id2sd (st->rid), event, 2);
+@@ -4907,6 +4911,10 @@ BUILDIN_FUNC(doevent)
+  */
+ BUILDIN_FUNC(donpcevent)
+ {
++    struct map_session_data *sd = script_rid2sd (st);
++    if (!sd || sd->npc_id != 0)
++        return 0;
++
+     char *event;
+     event = conv_str (st, &(st->stack->stack_data[st->start + 2]));
+     npc_event_do (event);
+@@ -8101,7 +8109,7 @@ BUILDIN_FUNC(npcclick)
+     sd = script_rid2sd (st);
+     struct npc_data *npc = npc_name2id(script_getstr(st, 2));
+ 
+-    if (!npc || !sd)
++    if (!npc || !sd || sd->npc_id != 0)
+     {
+         script_pushint(st, 0);
+         return 1;
+@@ -8118,7 +8126,7 @@ BUILDIN_FUNC(npcattach)
+     sd = script_rid2sd (st);
+     struct npc_data *nd = npc_name2id(script_getstr(st, 2));
+ 
+-    if (!nd || !sd)
++    if (!nd || !sd || sd->npc_id != 0)
+     {
+         script_pushint(st, 0);
+         return 1;
+-- 
+2.1.0
+

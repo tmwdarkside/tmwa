@@ -1,0 +1,24 @@
+From 5e0673f3264079129a2143b9d14a35423252dd2a Mon Sep 17 00:00:00 2001
+From: Andrei Karas <akaras@inbox.ru>
+Date: Sat, 15 Jan 2011 04:46:30 +0200
+Subject: [PATCH 191/226] Add tool makecheck2 tool.
+
+---
+ makecheck2 | 5 +++++
+ 1 file changed, 5 insertions(+)
+ create mode 100755 makecheck2
+
+diff --git a/makecheck2 b/makecheck2
+new file mode 100755
+index 0000000..407fb32
+--- /dev/null
++++ b/makecheck2
+@@ -0,0 +1,5 @@
++#!/bin/bash
++
++cd src
++#../../cppcheck/cppcheck --enable=all --force -j 5 -v -I /usr/include -I /usr/include/c++/4.4 . 1>../makecheck.txt 2>../makecheck_err.txt
++../../cppcheck/cppcheck --enable=style --enable=information --enable=unusedFunction --force -j 5 -v . 1>../check1.txt 2>../check2.txt
+-- 
+2.1.0
+

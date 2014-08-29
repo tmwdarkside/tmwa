@@ -1,0 +1,25 @@
+From aca84e33965874d8aefd5eb58a76177df59e5297 Mon Sep 17 00:00:00 2001
+From: var <var@var.none>
+Date: Fri, 7 Jan 2011 22:37:13 +0100
+Subject: [PATCH 176/226] Fix a buffer overflow
+
+---
+ src/map/npc.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/src/map/npc.c b/src/map/npc.c
+index a589c40..d3ded4a 100644
+--- a/src/map/npc.c
++++ b/src/map/npc.c
+@@ -2064,7 +2064,7 @@ int npc_parse_mob (char *w1, char *w2, char *w3, char *w4)
+     delay1 = delay2 = 0;
+     // �����̌��`�F�b�N
+     if (sscanf (w1, "%23[^,],%d,%d,%d,%d", mapname, &x, &y, &xs, &ys) < 3 ||
+-        sscanf (w4, "%d,%d,%d,%d,%s", &class, &num, &delay1, &delay2,
++        sscanf (w4, "%d,%d,%d,%d,%23s", &class, &num, &delay1, &delay2,
+                 eventname) < 2)
+     {
+         printf ("bad monster line : %s\n", w3);
+-- 
+2.1.0
+

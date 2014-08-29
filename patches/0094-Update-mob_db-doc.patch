@@ -1,0 +1,76 @@
+From 5d3d7a705d142cde0e3471f4da765a404f5fbe7e Mon Sep 17 00:00:00 2001
+From: Andrei Karas <akaras@inbox.ru>
+Date: Mon, 6 Dec 2010 22:54:38 +0200
+Subject: [PATCH 094/226] Update mob_db doc.
+
+Add binary mask values for mode.
+---
+ doc/mob_db.txt | 38 +++++++++++++++++++-------------------
+ 1 file changed, 19 insertions(+), 19 deletions(-)
+
+diff --git a/doc/mob_db.txt b/doc/mob_db.txt
+index f88cb94..bde638c 100644
+--- a/doc/mob_db.txt
++++ b/doc/mob_db.txt
+@@ -25,39 +25,39 @@ Scale
+ Race        
+ Element     
+ Mode        mob mode
+-    CANMOVE            | 0x0001  |      1
++    CANMOVE            | 0x0001  | 0000 0000  0000 0000 0000 0001 | 1
+         mob can move
+ 
+-    LOOTER             | 0x0002  |      2
++    LOOTER             | 0x0002  | 0000 0000  0000 0000 0000 0010 | 2
+         mob can collect loot (drops)
+ 
+-    AGGRESSIVE         | 0x0004  |      4
++    AGGRESSIVE         | 0x0004  | 0000 0000  0000 0000 0000 0100 | 4
+         mod aggressive
+ 
+-    ASSIST             | 0x0008  |      8
++    ASSIST             | 0x0008  | 0000 0000  0000 0000 0000 1000 | 8
+         mob can attack enemy of same mobs class
+ 
+-    CASTSENSOR_IDLE    | 0x0010  |     16
+-    BOSS               | 0x0020  |     32
+-    PLANT              | 0x0040  |     64
+-    CANATTACK          | 0x0080  |    128
++    CASTSENSOR_IDLE    | 0x0010  | 0000 0000  0000 0000 0001 0000 | 16
++    BOSS               | 0x0020  | 0000 0000  0000 0000 0010 0000 | 32
++    PLANT              | 0x0040  | 0000 0000  0000 0000 0100 0000 | 64
++    CANATTACK          | 0x0080  | 0000 0000  0000 0000 1000 0000 | 128
+         can attack
+ 
+-    DETECTOR           | 0x0100  |    256
+-    CASTSENSOR_CHASE   | 0x0200  |    512
+-    CHANGECHASE        | 0x0400  |   1024
+-    ANGRY              | 0x0800  |   2048
+-    CHANGETARGET_MELEE | 0x1000  |   4096
+-    CHANGETARGET_CHASE | 0x2000  |   8192
+-    TARGETWEAK         | 0x4000  |  16384
+-    RANDOMTARGET       | 0x8000  |  32768 (not implemented)
+-    SKILLATTACKONLY    | 0x10000 |  65536
++    DETECTOR           | 0x0100  | 0000 0000  0000 0001 0000 0000 | 256
++    CASTSENSOR_CHASE   | 0x0200  | 0000 0000  0000 0010 0000 0000 | 512
++    CHANGECHASE        | 0x0400  | 0000 0000  0000 0100 0000 0000 | 1024
++    ANGRY              | 0x0800  | 0000 0000  0000 1000 0000 0000 | 2048
++    CHANGETARGET_MELEE | 0x1000  | 0000 0000  0001 0000 0000 0000 | 4096
++    CHANGETARGET_CHASE | 0x2000  | 0000 0000  0010 0000 0000 0000 | 8192
++    TARGETWEAK         | 0x4000  | 0000 0000  0100 0000 0000 0000 | 16384
++    RANDOMTARGET       | 0x8000  | 0000 0000  1000 0000 0000 0000 | 32768 (not implemented)
++    SKILLATTACKONLY    | 0x10000 | 0000 0001  0000 0000 0000 0000 | 65536
+         allow attack only by skills
+ 
+-    WITHOUTMASTER      | 0x20000 |  131072
++    WITHOUTMASTER      | 0x20000 | 0000 0010  0000 0000 0000 0000 | 131072
+         allow stay alive if master dead
+ 
+-    ALLOWREUSESLAVE    | 0x40000 |  262144
++    ALLOWREUSESLAVE    | 0x40000 | 0000 0100  0000 0000 0000 0000 | 262144
+         allow reuse mob for new master
+ 
+ Speed       move speed. less is better speed.
+-- 
+2.1.0
+

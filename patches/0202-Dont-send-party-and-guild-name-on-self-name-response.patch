@@ -1,0 +1,25 @@
+From 5c3a86d647cbfac3419d704a2ecf15843906a632 Mon Sep 17 00:00:00 2001
+From: Andrei Karas <akaras@inbox.ru>
+Date: Sun, 23 Jan 2011 02:26:15 +0200
+Subject: [PATCH 202/226] Dont send party and guild name on self name response.
+
+---
+ src/map/clif.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/src/map/clif.c b/src/map/clif.c
+index 1269afb..887022c 100644
+--- a/src/map/clif.c
++++ b/src/map/clif.c
+@@ -7346,7 +7346,7 @@ void clif_parse_GetCharNameRequest (int fd, struct map_session_data *sd)
+                 send = 1;
+             }
+ 
+-            if (send)
++            if (send && account_id != sd->status.account_id)
+             {
+                 WFIFOW (fd, 0) = 0x195;
+                 WFIFOL (fd, 2) = account_id;
+-- 
+2.1.0
+

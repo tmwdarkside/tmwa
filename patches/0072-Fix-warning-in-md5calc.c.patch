@@ -1,0 +1,28 @@
+From a2559365c9721356b3e1d2fe831d36a22c76ed29 Mon Sep 17 00:00:00 2001
+From: Andrei Karas <akaras@inbox.ru>
+Date: Thu, 2 Dec 2010 23:40:27 +0200
+Subject: [PATCH 072/226] Fix warning in md5calc.c
+
+---
+ src/common/md5calc.c | 5 ++++-
+ 1 file changed, 4 insertions(+), 1 deletion(-)
+
+diff --git a/src/common/md5calc.c b/src/common/md5calc.c
+index 22c7588..6c4ada4 100644
+--- a/src/common/md5calc.c
++++ b/src/common/md5calc.c
+@@ -382,7 +382,10 @@ in_addr_t MD5_ip(char *secret, in_addr_t ip)
+ 
+     if (!secret)
+     {
+-        memset(&conv, 4, 0);
++        conv.bytes.b1 = 0;
++        conv.bytes.b2 = 0;
++        conv.bytes.b3 = 0;
++        conv.bytes.b4 = 0;
+         return conv.ip;
+     }
+ 
+-- 
+2.1.0
+

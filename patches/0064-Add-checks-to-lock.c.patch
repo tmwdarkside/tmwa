@@ -1,0 +1,45 @@
+From 0c4003ea6ff28e3848fb2ea5d6a40592e53ca09c Mon Sep 17 00:00:00 2001
+From: Andrei Karas <akaras@inbox.ru>
+Date: Tue, 30 Nov 2010 19:27:40 +0200
+Subject: [PATCH 064/226] Add checks to lock.c
+
+---
+ src/common/lock.c | 14 ++++++++++++--
+ 1 file changed, 12 insertions(+), 2 deletions(-)
+
+diff --git a/src/common/lock.c b/src/common/lock.c
+index 75c4f1c..d9fa581 100644
+--- a/src/common/lock.c
++++ b/src/common/lock.c
+@@ -10,7 +10,12 @@
+ // 新しいファイルの書き込み開始
+ FILE *lock_fopen (const char *filename, int *info, int *cnt __attribute__ ((unused)))
+ {
+-    char newfile[512];
++    //+++ need check filename length?
++
++    if (!filename || !info)
++        return 0;
++
++    char newfile[800];
+     FILE *fp;
+     int  no = getpid ();
+ 
+@@ -27,8 +32,13 @@ FILE *lock_fopen (const char *filename, int *info, int *cnt __attribute__ ((unus
+ // 旧ファイルを削除＆新ファイルをリネーム
+ int lock_fclose (FILE * fp, const char *filename, int *info, int *cnt)
+ {
++    //+++ need check filename length?
++
++    if (!filename || !info || !cnt)
++        return 1;
++
+     int  ret = 0;
+-    char newfile[512];
++    char newfile[800];
+     if (fp != NULL)
+     {
+         ret = fclose_ (fp);
+-- 
+2.1.0
+

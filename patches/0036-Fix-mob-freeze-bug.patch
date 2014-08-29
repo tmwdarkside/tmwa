@@ -1,0 +1,29 @@
+From 550260f4b62eccaa36fd1f07390a383f9bb3b835 Mon Sep 17 00:00:00 2001
+From: Andrei Karas <akaras@inbox.ru>
+Date: Tue, 23 Nov 2010 22:03:33 +0200
+Subject: [PATCH 036/226] Fix mob freeze bug.
+
+---
+ src/map/mob.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/src/map/mob.c b/src/map/mob.c
+index a77afda..3d1aa5a 100644
+--- a/src/map/mob.c
++++ b/src/map/mob.c
+@@ -970,10 +970,10 @@ static int mob_attack (struct mob_data *md, unsigned int tick,
+ 
+     nullpo_retr (0, md);
+ 
+-    if ((tbl = map_id2bl (md->target_id)) == NULL)
++    if (!mob_check_attack (md))
+         return 0;
+ 
+-    if (!mob_check_attack (md))
++    if ((tbl = map_id2bl (md->target_id)) == NULL)
+         return 0;
+ 
+     if (battle_config.monster_attack_direction_change)
+-- 
+2.1.0
+

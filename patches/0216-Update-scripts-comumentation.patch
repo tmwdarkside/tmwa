@@ -1,0 +1,78 @@
+From 9d4a680ccb4b6246e0c701038bb170d47bc7f580 Mon Sep 17 00:00:00 2001
+From: Andrei Karas <akaras@inbox.ru>
+Date: Wed, 2 Feb 2011 00:40:32 +0200
+Subject: [PATCH 216/226] Update scripts comumentation.
+
+---
+ doc/scripts.txt | 38 ++++++++++++++++++++++++++------------
+ 1 file changed, 26 insertions(+), 12 deletions(-)
+
+diff --git a/doc/scripts.txt b/doc/scripts.txt
+index ad1b13d..510865e 100644
+--- a/doc/scripts.txt
++++ b/doc/scripts.txt
+@@ -1,35 +1,49 @@
+-l (text)
+-    translate text to player language
+-
+-
+-mesn text
+-    show message like: [text]
+-
+-
+-mesq text
+-    show message like: "text"
+-
+-
+ geta (variable, index)
+     get bit at given index.
+ 
++    index can 0 - 31
+     each value can be 0 - 1
+ 
+ 
+ geta2 (variable, index)
+     get two bits at given index
+ 
++    index can 0 - 15
+     each value can be 0 - 3
+ 
+ 
++getnpcclass [name]
++    return npc class id
++
++l (text)
++    translate text to player language
++
++
++mesn text
++    show message like: [text]
++
++
++mesq text
++    show message like: "text"
++
++
+ seta variable, index, value
+     set bit at given index
+ 
++    index can 0 - 31
+     each value can be 0 - 1
+ 
+ 
+ seta2 variable, index, value
+     set two bit at given index
+ 
++    index can 0 - 15
+     each value can be 0 - 3
+ 
++
++setnpcclass [name,] n
++    set npc class to given value
++
++
++settempnpcclass [name,] n
++    temporary set npc class to given value
+-- 
+2.1.0
+

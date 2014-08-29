@@ -1,0 +1,26 @@
+From 29c36e9b18e65f35852a9eb5d90bbc0c6c552145 Mon Sep 17 00:00:00 2001
+From: Andrei Karas <akaras@inbox.ru>
+Date: Fri, 17 Dec 2010 04:49:45 +0200
+Subject: [PATCH 111/226] Add missing check.
+
+---
+ src/map/pc.c | 3 +++
+ 1 file changed, 3 insertions(+)
+
+diff --git a/src/map/pc.c b/src/map/pc.c
+index 46dc341..525606e 100644
+--- a/src/map/pc.c
++++ b/src/map/pc.c
+@@ -7815,6 +7815,9 @@ pc_signal_advanced_equipment_change (struct map_session_data *sd, int n)
+ {
+     nullpo_retr (0, sd);
+ 
++    if (n < 0 || n >= MAX_INVENTORY)
++        return 0;
++
+     if (sd->status.inventory[n].equip & 0x0040)
+         clif_changelook (&sd->bl, LOOK_SHOES, 0);
+     if (sd->status.inventory[n].equip & 0x0004)
+-- 
+2.1.0
+

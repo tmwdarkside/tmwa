@@ -1,0 +1,272 @@
+From c631a44b965d55d26a36841166f8f19bd4c6d7a2 Mon Sep 17 00:00:00 2001
+From: Andrei Karas <akaras@inbox.ru>
+Date: Fri, 19 Nov 2010 03:20:14 +0200
+Subject: [PATCH 032/226] Add more compilation options and fix warnings.
+
+---
+ make.defs            | 11 +++++++----
+ src/char/char.c      |  4 ++--
+ src/common/mmo.h     |  3 +--
+ src/login/login.c    | 12 ++++++------
+ src/map/atcommand.c  |  4 ++--
+ src/map/battle.h     |  4 ++--
+ src/map/magic-expr.c | 28 ++++++++++++++--------------
+ src/map/mob.c        |  4 ++--
+ src/map/skill.h      |  6 +++---
+ 9 files changed, 39 insertions(+), 37 deletions(-)
+
+diff --git a/make.defs b/make.defs
+index e705841..18e916b 100644
+--- a/make.defs
++++ b/make.defs
+@@ -17,11 +17,14 @@ else
+ MAKE = make
+ endif
+ 
+-#skipped -Wredundant-decls -Wmissing-format-attribute -Wswitch-default 
+-#need fix -Wmissing-declarations
+-OPT = -pipe -g -fno-strict-aliasing -O2 -Wall -Wunreachable-code -Wmissing-field-initializers -Wabi \
++#skipped -Wredundant-decls -Wmissing-format-attribute -Wswitch-default -Wlogical-op
++#need fix -Wmissing-declarations -Wsign-compare -Wcast-qual -Wundef
++
++OPT = -pipe -g -fno-strict-aliasing -O2 -Wall -Wmissing-field-initializers -Wabi \
+ -Wdisabled-optimization -Wuninitialized -Wvolatile-register-var -Winvalid-pch \
+--Wnormalized=nfkc -Wmissing-noreturn -Waddress -Wunused-parameter
++-Wnormalized=nfkc -Wmissing-noreturn -Waddress -Wunused-parameter -Wempty-body -Wclobbered \
++-Wcast-align -Wtype-limits -Wpointer-arith -Wmissing-include-dirs -Wignored-qualifiers \
++-Winit-self
+ 
+ ifeq ($(findstring CYGWIN,$(PLATFORM)), CYGWIN)
+ OS_TYPE = -DCYGWIN
+diff --git a/src/char/char.c b/src/char/char.c
+index 21a6583..db0a396 100644
+--- a/src/char/char.c
++++ b/src/char/char.c
+@@ -954,7 +954,7 @@ int make_new_char (int fd, unsigned char *dat)
+ 
+     if (dat[24] + dat[25] + dat[26] + dat[27] + dat[28] + dat[29] != 5 * 6 ||   // stats
+         dat[30] >= 9 ||         // slots (dat[30] can not be negativ)
+-        dat[33] < 0 || dat[33] >= 30 || // hair style
++        /*dat[33] < 0 ||*/ dat[33] >= 30 || // hair style
+         dat[31] >= 12)
+     {                           // hair color (dat[31] can not be negativ)
+         char_log
+@@ -3829,7 +3829,7 @@ int lan_config_read (const char *lancfgName)
+     {
+         unsigned int a0, a1, a2, a3;
+         unsigned char p[4];
+-        sscanf (lan_map_ip, "%d.%d.%d.%d", &a0, &a1, &a2, &a3);
++        sscanf (lan_map_ip, "%u.%u.%u.%u", &a0, &a1, &a2, &a3);
+         p[0] = a0;
+         p[1] = a1;
+         p[2] = a2;
+diff --git a/src/common/mmo.h b/src/common/mmo.h
+index 11d37b1..ecfb223 100644
+--- a/src/common/mmo.h
++++ b/src/common/mmo.h
+@@ -284,8 +284,7 @@ enum
+     GBI_SKILLLV = 4,            // ギルドスキルLv
+ 
+     GMI_POSITION = 0,           // メンバーの役職変更
+-    GMI_EXP = 1,                // メンバーのEXP
+-
++    GMI_EXP = 1                 // メンバーのEXP
+ };
+ 
+ #ifndef LCCWIN32
+diff --git a/src/login/login.c b/src/login/login.c
+index 8854a8e..54501da 100644
+--- a/src/login/login.c
++++ b/src/login/login.c
+@@ -297,14 +297,14 @@ int check_ipmask (unsigned int ip, const unsigned char *str)
+     unsigned int mask = 0, i = 0, m, ip2, a0, a1, a2, a3;
+     unsigned char *p = (unsigned char *) &ip2, *p2 = (unsigned char *) &mask;
+ 
+-    if (sscanf (str, "%d.%d.%d.%d/%n", &a0, &a1, &a2, &a3, &i) != 4 || i == 0)
++    if (sscanf (str, "%u.%u.%u.%u/%n", &a0, &a1, &a2, &a3, &i) != 4 || i == 0)
+         return 0;
+     p[0] = a0;
+     p[1] = a1;
+     p[2] = a2;
+     p[3] = a3;
+ 
+-    if (sscanf (str + i, "%d.%d.%d.%d", &a0, &a1, &a2, &a3) == 4)
++    if (sscanf (str + i, "%u.%u.%u.%d", &a0, &a1, &a2, &a3) == 4)
+     {
+         p2[0] = a0;
+         p2[1] = a1;
+@@ -312,7 +312,7 @@ int check_ipmask (unsigned int ip, const unsigned char *str)
+         p2[3] = a3;
+         mask = ntohl (mask);
+     }
+-    else if (sscanf (str + i, "%d", &m) == 1 && m >= 0 && m <= 32)
++    else if (sscanf (str + i, "%u", &m) == 1 /*&& m >= 0*/ && m <= 32)
+     {
+         for (i = 0; i < m && i < 32; i++)
+             mask = (mask >> 1) | 0x80000000;
+@@ -2133,6 +2133,8 @@ int parse_fromchar (int fd)
+                 {
+                     int  acc;
+                     char actual_pass[24], new_pass[24];
++                    int  status = 0;
++
+                     acc = RFIFOL (fd, 2);
+                     memcpy (actual_pass, RFIFOP (fd, 6), 24);
+                     actual_pass[23] = '\0';
+@@ -2141,8 +2143,6 @@ int parse_fromchar (int fd)
+                     new_pass[23] = '\0';
+                     remove_control_chars (new_pass);
+ 
+-                    int  status = 0;
+-
+                     for (i = 0; i < auth_num; i++)
+                     {
+                         if (auth_dat[i].account_id == acc)
+@@ -4330,7 +4330,7 @@ int login_lan_config_read (const char *lancfgName)
+     {
+         unsigned int a0, a1, a2, a3;
+         unsigned char p[4];
+-        sscanf (lan_char_ip, "%d.%d.%d.%d", &a0, &a1, &a2, &a3);
++        sscanf (lan_char_ip, "%u.%u.%u.%u", &a0, &a1, &a2, &a3);
+         p[0] = a0;
+         p[1] = a1;
+         p[2] = a2;
+diff --git a/src/map/atcommand.c b/src/map/atcommand.c
+index ce0a75f..03e1f13 100644
+--- a/src/map/atcommand.c
++++ b/src/map/atcommand.c
+@@ -6701,8 +6701,8 @@ char *txt_time (unsigned int duration)
+     memset (temp, '\0', sizeof (temp));
+     memset (temp1, '\0', sizeof (temp1));
+ 
+-    if (duration < 0)
+-        duration = 0;
++//    if (duration < 0)
++//        duration = 0;
+ 
+     days = duration / (60 * 60 * 24);
+     duration = duration - (60 * 60 * 24 * days);
+diff --git a/src/map/battle.h b/src/map/battle.h
+index 44016a5..dd67841 100644
+--- a/src/map/battle.h
++++ b/src/map/battle.h
+@@ -56,7 +56,7 @@ enum
+     BF_NORMAL = 0x0200,
+     BF_WEAPONMASK = 0x000f,
+     BF_RANGEMASK = 0x00f0,
+-    BF_SKILLMASK = 0x0f00,
++    BF_SKILLMASK = 0x0f00
+ };
+ 
+ // 実際にHPを増減
+@@ -133,7 +133,7 @@ enum
+     BCT_ENEMY = 0x40000,
+     BCT_NOPARTY = 0x50000,
+     BCT_ALL = 0x20000,
+-    BCT_NOONE = 0x60000,
++    BCT_NOONE = 0x60000
+ };
+ 
+ int  battle_check_undead (int race, int element);
+diff --git a/src/map/magic-expr.c b/src/map/magic-expr.c
+index 0dc21a4..807c1d8 100644
+--- a/src/map/magic-expr.c
++++ b/src/map/magic-expr.c
+@@ -698,18 +698,18 @@ fun_has_shroud (env_t * env __attribute__ ((unused)), int args_nr __attribute__
+ 
+ #define BATTLE_GETTER(name) static int fun_get_##name(env_t *env __attribute__ ((unused)), int args_nr __attribute__ ((unused)), val_t *result, val_t *args) { RESULTINT = battle_get_##name(ARGENTITY(0)); return 0; }
+ 
+-BATTLE_GETTER (str);
+-BATTLE_GETTER (agi);
+-BATTLE_GETTER (vit);
+-BATTLE_GETTER (dex);
+-BATTLE_GETTER (luk);
+-BATTLE_GETTER (int);
+-BATTLE_GETTER (lv);
+-BATTLE_GETTER (hp);
+-BATTLE_GETTER (mdef);
+-BATTLE_GETTER (def);
+-BATTLE_GETTER (max_hp);
+-BATTLE_GETTER (dir);
++BATTLE_GETTER (str)
++BATTLE_GETTER (agi)
++BATTLE_GETTER (vit)
++BATTLE_GETTER (dex)
++BATTLE_GETTER (luk)
++BATTLE_GETTER (int)
++BATTLE_GETTER (lv)
++BATTLE_GETTER (hp)
++BATTLE_GETTER (mdef)
++BATTLE_GETTER (def)
++BATTLE_GETTER (max_hp)
++BATTLE_GETTER (dir)
+ 
+ #define MMO_GETTER(name) static int fun_get_##name(env_t *env __attribute__ ((unused)), int args_nr __attribute__ ((unused)), val_t *result, val_t *args) {	\
+                 if (ETY(0) == BL_PC)								\
+@@ -718,8 +718,8 @@ BATTLE_GETTER (dir);
+ 		        RESULTINT = 0;								\
+ 		return 0; }
+ 
+-MMO_GETTER (sp);
+-MMO_GETTER (max_sp);
++MMO_GETTER (sp)
++MMO_GETTER (max_sp)
+ 
+ static int
+ fun_name_of (env_t * env __attribute__ ((unused)), int args_nr __attribute__ ((unused)), val_t * result, val_t * args)
+diff --git a/src/map/mob.c b/src/map/mob.c
+index 4ee1218..a77afda 100644
+--- a/src/map/mob.c
++++ b/src/map/mob.c
+@@ -755,7 +755,7 @@ static int calc_next_walk_step (struct mob_data *md)
+ {
+     nullpo_retr (0, md);
+ 
+-    if (md->walkpath.path_pos < 0 || md->walkpath.path_pos >= md->walkpath.path_len)
++    if (md->walkpath.path_pos >= md->walkpath.path_len)
+         return -1;
+     if (md->walkpath.path[md->walkpath.path_pos] & 1)
+         return battle_get_speed (&md->bl) * 14 / 10;
+@@ -779,7 +779,7 @@ static int mob_walk (struct mob_data *md, unsigned int tick, int data)
+     nullpo_retr (0, md);
+ 
+     md->state.state = MS_IDLE;
+-    if (md->walkpath.path_pos < 0 || md->walkpath.path_pos >= md->walkpath.path_len
++    if (md->walkpath.path_pos >= md->walkpath.path_len
+         || md->walkpath.path_pos != data)
+         return 0;
+ 
+diff --git a/src/map/skill.h b/src/map/skill.h
+index 686269a..988b45c 100644
+--- a/src/map/skill.h
++++ b/src/map/skill.h
+@@ -178,7 +178,7 @@ enum
+ {
+     ST_NONE, ST_HIDING, ST_CLOAKING, ST_HIDDEN, ST_RIDING, ST_FALCON, ST_CART,
+     ST_SHIELD, ST_SIGHT, ST_EXPLOSIONSPIRITS,
+-    ST_RECOV_WEIGHT_RATE, ST_MOVE_ENABLE, ST_WATER,
++    ST_RECOV_WEIGHT_RATE, ST_MOVE_ENABLE, ST_WATER
+ };
+ 
+ enum
+@@ -348,7 +348,7 @@ enum
+     SC_HASTE = 198,             // `Haste' spell (val1 : power)
+     SC_PHYS_SHIELD = 199,       // `Protect' spell, reduce damage (val1: power)
+ 
+-    SC_DIVINA = SC_SILENCE,
++    SC_DIVINA = SC_SILENCE
+ };
+ extern int SkillStatusChangeTable[];
+ 
+@@ -858,7 +858,7 @@ enum
+     GD_KAFRACONTACT,
+     GD_GUARDIANRESEARCH,
+     GD_CHARISMA,
+-    GD_EXTENSION,
++    GD_EXTENSION
+ };
+ 
+ // [Fate] Skill pools API
+-- 
+2.1.0
+

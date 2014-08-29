@@ -1,0 +1,35 @@
+From aa03be458d1b12a60e9c552a50ab7498d631ee64 Mon Sep 17 00:00:00 2001
+From: Andrei Karas <akaras@inbox.ru>
+Date: Mon, 29 Nov 2010 03:41:37 +0200
+Subject: [PATCH 057/226] Improve SC_MAGNIFICAT skill action.
+
+Now first parameter set multiplier for hp/sp restoring.
+---
+ src/map/pc.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/src/map/pc.c b/src/map/pc.c
+index 79609a3..9f96bc6 100644
+--- a/src/map/pc.c
++++ b/src/map/pc.c
+@@ -8083,7 +8083,7 @@ static int pc_spheal (struct map_session_data *sd)
+     if (pc_issit (sd))
+         a += a;
+     if (sd->sc_data[SC_MAGNIFICAT].timer != -1) // �}�O�j�t�B�J�[�g
+-        a += a;
++        a += a * sd->sc_data[SC_MAGNIFICAT].val1;
+ 
+     gc = guild_mapname2gc (sd->mapname);    // Increased guild castle regen [Valaris]
+     if (gc)
+@@ -8112,7 +8112,7 @@ static int pc_hpheal (struct map_session_data *sd)
+     if (pc_issit (sd))
+         a += a;
+     if (sd->sc_data[SC_MAGNIFICAT].timer != -1) // Modified by RoVeRT
+-        a += a;
++        a += a * sd->sc_data[SC_MAGNIFICAT].val1;
+ 
+     gc = guild_mapname2gc (sd->mapname);    // Increased guild castle regen [Valaris]
+     if (gc)
+-- 
+2.1.0
+

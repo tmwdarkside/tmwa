@@ -1,0 +1,33 @@
+From a94e4beff47c8447ed5a5686137b09fee29e3eee Mon Sep 17 00:00:00 2001
+From: Andrei Karas <akaras@inbox.ru>
+Date: Sat, 18 Dec 2010 01:51:40 +0200
+Subject: [PATCH 115/226] Comment some item checks by id in use function.
+
+Look like id was from eathena.
+---
+ src/map/pc.c | 2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/src/map/pc.c b/src/map/pc.c
+index 525606e..84ac6d3 100644
+--- a/src/map/pc.c
++++ b/src/map/pc.c
+@@ -4068,6 +4068,7 @@ int pc_isUseitem (struct map_session_data *sd, int n)
+         return 0;
+     if (itemdb_type (nameid) != 0)
+         return 0;
++/*
+     if ((nameid == 605) && map[sd->bl.m].flag.gvg)
+         return 0;
+     if (nameid == 601
+@@ -4082,6 +4083,7 @@ int pc_isUseitem (struct map_session_data *sd, int n)
+     if (nameid == 604
+         && (map[sd->bl.m].flag.nobranch || map[sd->bl.m].flag.gvg))
+         return 0;
++*/
+     if (item->sex != 2 && sd->status.sex != item->sex)
+         return 0;
+     if (item->elv > 0 && sd->status.base_level < item->elv)
+-- 
+2.1.0
+

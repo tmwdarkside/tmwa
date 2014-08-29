@@ -1,0 +1,49 @@
+From 5958b17c95f7646d29fa40c81b34393f4199cd21 Mon Sep 17 00:00:00 2001
+From: Stefan Beller <stefanbeller@googlemail.com>
+Date: Mon, 10 Jan 2011 13:53:42 +0100
+Subject: [PATCH 205/226] adding the TMW_RAGING skill
+
+reviewed by:
+---
+ src/map/pc.c    | 9 +++++++++
+ src/map/skill.h | 3 ++-
+ 2 files changed, 11 insertions(+), 1 deletion(-)
+
+diff --git a/src/map/pc.c b/src/map/pc.c
+index 9af00bd..01aa538 100644
+--- a/src/map/pc.c
++++ b/src/map/pc.c
+@@ -1869,6 +1869,15 @@ int pc_calcstatus (struct map_session_data *sd, int first)
+     sd->flee2 += sd->paramc[5] + 10;
+     sd->critical += (sd->paramc[5] * 3) + 10;
+ 
++    // 200 is the maximum of the skill
++    // so critical chance can get multiplied by ~1.5 and setting def2 to a third when skill maxed out
++    // def2 is the defence gained by vit, whereas "def", which is gained by armor, stays as is
++    int spbsk = skill_power (sd, TMW_RAGING);
++    if (spbsk!=0) {
++        sd->critical *= (128 + spbsk)/256;
++        sd->def2 /=      (128 + spbsk)/128;
++    }
++
+     if (sd->base_atk < 1)
+         sd->base_atk = 1;
+     if (sd->critical_rate != 100)
+diff --git a/src/map/skill.h b/src/map/skill.h
+index 2273956..2c6a0ef 100644
+--- a/src/map/skill.h
++++ b/src/map/skill.h
+@@ -734,8 +734,9 @@ enum
+     TMW_SPEED = 352,
+     TMW_RESIST_POISON = 353,
+     TMW_ASTRAL_SOUL = 354,
++    TMW_RAGING = 355,
+ 
+-    LK_AURABLADE = 355,
++    LK_AURABLADE = 356,
+     LK_PARRYING,
+     LK_CONCENTRATION,
+     LK_TENSIONRELAX,
+-- 
+2.1.0
+

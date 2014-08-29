@@ -1,0 +1,53 @@
+From 898d1da14de864b03efdccc09528781beab0da16 Mon Sep 17 00:00:00 2001
+From: Andrei Karas <akaras@inbox.ru>
+Date: Thu, 16 Dec 2010 19:06:48 +0200
+Subject: [PATCH 108/226] Allow compilation on FreeBSD.
+
+---
+ bmake.sh  | 12 ++++++++++--
+ make.defs |  3 ++-
+ 2 files changed, 12 insertions(+), 3 deletions(-)
+
+diff --git a/bmake.sh b/bmake.sh
+index 07855f1..3ca31dc 100755
+--- a/bmake.sh
++++ b/bmake.sh
+@@ -1,4 +1,12 @@
+-#!/bin/bash
++#!/bin/sh
+ 
+ export LANG=C
+-make >./make1.txt 2>./make2.txt
++OS=`uname -s`
++if [ "$OS" = "FreeBSD" ]
++then
++    MAKE=gmake
++else
++    MAKE=make
++fi
++
++$MAKE >./make1.txt 2>./make2.txt
+diff --git a/make.defs b/make.defs
+index e0c4af0..d8777ca 100644
+--- a/make.defs
++++ b/make.defs
+@@ -7,14 +7,15 @@ endif
+ #STATIC=-static
+ #MAPPROFILE=-pg -fno-inline
+ 
+-CC = gcc ${M32} ${STATIC}
+ LEX=flex
+ BISON=bison
+ 
+ PLATFORM = $(shell uname)
+ ifeq ($(findstring FreeBSD,$(PLATFORM)), FreeBSD)
++CC = gcc44 ${M32} ${STATIC}
+ MAKE = gmake
+ else
++CC = gcc-4.4 ${M32} ${STATIC}
+ MAKE = make
+ endif
+ 
+-- 
+2.1.0
+

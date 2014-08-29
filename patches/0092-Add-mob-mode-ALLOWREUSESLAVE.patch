@@ -1,0 +1,185 @@
+From 8630b93b96134805bbb610bf589da7e247054d16 Mon Sep 17 00:00:00 2001
+From: Andrei Karas <akaras@inbox.ru>
+Date: Mon, 6 Dec 2010 04:57:55 +0200
+Subject: [PATCH 092/226] Add mob mode ALLOWREUSESLAVE.
+
+In this mode master can reuse possible slaves from near located mobs.
+---
+ src/map/map.c | 86 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++---
+ src/map/map.h |  2 ++
+ src/map/mob.c | 38 ++++++++++++++++++++++++++
+ 3 files changed, 123 insertions(+), 3 deletions(-)
+
+diff --git a/src/map/map.c b/src/map/map.c
+index fde822a..ecbae49 100644
+--- a/src/map/map.c
++++ b/src/map/map.c
+@@ -442,13 +442,93 @@ void map_foreachinarea (int (*func) (struct block_list *, va_list), int m,
+             printf ("map_foreachinarea: *WARNING* block count too many!\n");
+     }
+ 
+-    map_freeblock_lock ();      // メモリからの解放を禁止する
++    map_freeblock_lock ();
+ 
+     for (i = blockcount; i < bl_list_count; i++)
+-        if (bl_list[i]->prev)   // 有効かどうかチェック
++        if (bl_list[i]->prev)
+             func (bl_list[i], ap);
+ 
+-    map_freeblock_unlock ();    // 解放を許可する
++    map_freeblock_unlock ();
++
++    va_end (ap);
++    bl_list_count = blockcount;
++}
++
++void map_foreachinarea_cond (int (*func) (struct block_list *, va_list), int m,
++                        int x0, int y0, int x1, int y1, int type, ...)
++{
++    if (!func)
++        return;
++
++    int  bx, by;
++    struct block_list *bl = NULL;
++    va_list ap = NULL;
++    int  blockcount = bl_list_count, i, c;
++
++    if (m < 0)
++        return;
++    va_start (ap, type);
++    if (x0 < 0)
++        x0 = 0;
++    if (y0 < 0)
++        y0 = 0;
++    if (x1 >= map[m].xs)
++        x1 = map[m].xs - 1;
++    if (y1 >= map[m].ys)
++        y1 = map[m].ys - 1;
++    if (type == 0 || type != BL_MOB)
++        for (by = y0 / BLOCK_SIZE; by <= y1 / BLOCK_SIZE; by++)
++        {
++            const int by1 = by * map[m].bxs;
++            for (bx = x0 / BLOCK_SIZE; bx <= x1 / BLOCK_SIZE; bx++)
++            {
++                const int b2 = bx + by1;
++                bl = map[m].block[b2];
++                c = map[m].block_count[b2];
++                for (i = 0; i < c && bl; i++, bl = bl->next)
++                {
++                    if (!bl)
++                        continue;
++                    if (type && bl->type != type)
++                        continue;
++                    if (bl->x >= x0 && bl->x <= x1 && bl->y >= y0
++                        && bl->y <= y1 && bl_list_count < BL_LIST_MAX)
++                        bl_list[bl_list_count++] = bl;
++                }
++            }
++        }
++    if (type == 0 || type == BL_MOB)
++        for (by = y0 / BLOCK_SIZE; by <= y1 / BLOCK_SIZE; by++)
++        {
++            const int by1 = by * map[m].bxs;
++            for (bx = x0 / BLOCK_SIZE; bx <= x1 / BLOCK_SIZE; bx++)
++            {
++                const int b2 = bx + by1;
++                bl = map[m].block_mob[b2];
++                c = map[m].block_mob_count[b2];
++                for (i = 0; i < c && bl; i++, bl = bl->next)
++                {
++                    if (bl && bl->x >= x0 && bl->x <= x1 && bl->y >= y0
++                        && bl->y <= y1 && bl_list_count < BL_LIST_MAX)
++                        bl_list[bl_list_count++] = bl;
++                }
++            }
++        }
++
++    if (bl_list_count >= BL_LIST_MAX)
++    {
++        if (battle_config.error_log)
++            printf ("map_foreachinarea_cond: *WARNING* block count too many!\n");
++    }
++
++    map_freeblock_lock ();
++
++    for (i = blockcount; i < bl_list_count; i++)
++        if (bl_list[i]->prev)
++            if (func (bl_list[i], ap))
++                break;
++
++    map_freeblock_unlock ();
+ 
+     va_end (ap);
+     bl_list_count = blockcount;
+diff --git a/src/map/map.h b/src/map/map.h
+index e5fd006..c277a05 100644
+--- a/src/map/map.h
++++ b/src/map/map.h
+@@ -738,6 +738,8 @@ int  map_addblock (struct block_list *);
+ int  map_delblock (struct block_list *);
+ void map_foreachinarea (int (*)(struct block_list *, va_list), int, int, int,
+                         int, int, int, ...);
++void map_foreachinarea_cond (int (*)(struct block_list *, va_list), int, int, int,
++                             int, int, int, ...);
+ // -- moonsoul (added map_foreachincell)
+ void map_foreachincell (int (*)(struct block_list *, va_list), int, int, int,
+                         int, ...);
+diff --git a/src/map/mob.c b/src/map/mob.c
+index 5a1d048..d83f1f0 100644
+--- a/src/map/mob.c
++++ b/src/map/mob.c
+@@ -3568,6 +3568,35 @@ int mob_countslave (struct mob_data *md)
+     return c;
+ }
+ 
++static int mob_find_slave (struct block_list *bl, va_list ap)
++{
++    struct mob_data *tmd;
++    struct mob_data *md;
++    int class;
++    int *amount;
++
++    nullpo_retr (0, bl);
++    nullpo_retr (0, ap);
++    nullpo_retr (0, tmd = (struct mob_data *) bl);
++    nullpo_retr (0, md = va_arg (ap, struct mob_data *));
++    nullpo_retr (0, class = va_arg (ap, int));
++    nullpo_retr (0, amount = va_arg (ap, int*));
++
++    if ((*amount) <= 0)
++        return 1;
++
++    if (!tmd->master_id && tmd->class == class && mob_db[tmd->class].mode & 0x40000)
++    {
++        tmd->master_id = md->bl.id;
++        tmd->master_dist = distance (md->bl.x, md->bl.y, tmd->bl.x, tmd->bl.y);
++        (*amount) --;
++        if ((*amount) <= 0)
++            return 1;
++    }
++
++    return 0;
++}
++
+ /*==========================================
+  * 手下MOB召喚
+  *------------------------------------------
+@@ -3597,6 +3626,15 @@ int mob_summonslave (struct mob_data *md2, int *value, int amount, int flag)
+         class = value[k];
+         if (class <= 1000 || class > 2000)
+             continue;
++
++        if (flag)
++        {
++            map_foreachinarea_cond (mob_find_slave, md2->bl.m,
++                                    md2->bl.x - 13, md2->bl.y - 13,
++                                    md2->bl.x + 13, md2->bl.y + 13,
++                                    BL_MOB, md2, class, &amount);
++        }
++
+         for (; amount > 0; amount--)
+         {
+             int  x = 0, y = 0, c = 0, i = 0;
+-- 
+2.1.0
+

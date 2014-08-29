@@ -1,0 +1,224 @@
+From fbb7dfa6b3b549eef1b01f8fc7ee92f5446fdadf Mon Sep 17 00:00:00 2001
+From: Andrei Karas <akaras@inbox.ru>
+Date: Mon, 31 Jan 2011 04:58:07 +0200
+Subject: [PATCH 210/226] Add to area npc event OnUnTouch.
+
+---
+ src/map/chrif.c |  4 ++--
+ src/map/clif.c  | 26 ++++++++++++++++++--------
+ src/map/clif.h  |  2 ++
+ src/map/npc.c   | 35 ++++++++++++++++++++++++++++++++++-
+ src/map/npc.h   |  1 +
+ src/map/pc.c    |  4 ++--
+ 6 files changed, 59 insertions(+), 13 deletions(-)
+
+diff --git a/src/map/chrif.c b/src/map/chrif.c
+index 6f4a37e..a8f52a3 100644
+--- a/src/map/chrif.c
++++ b/src/map/chrif.c
+@@ -1208,7 +1208,7 @@ int chrif_parse (int fd)
+             if (r == 2)
+                 return 0;       // intifで処理したが、データが足りない
+ 
+-            session[fd]->eof = 1;
++            clif_eof(fd);
+             return 0;
+         }
+         packet_len = packet_len_table[cmd - 0x2af8];
+@@ -1284,7 +1284,7 @@ int chrif_parse (int fd)
+                 if (battle_config.error_log)
+                     printf ("chrif_parse : unknown packet %d %d\n", fd,
+                             RFIFOW (fd, 0));
+-                session[fd]->eof = 1;
++                clif_eof(fd);
+                 return 0;
+         }
+         RFIFOSKIP (fd, packet_len);
+diff --git a/src/map/clif.c b/src/map/clif.c
+index 562a87a..b801b33 100644
+--- a/src/map/clif.c
++++ b/src/map/clif.c
+@@ -1565,12 +1565,22 @@ static int clif_waitclose (int tid __attribute__ ((unused)),
+                            unsigned int tick __attribute__ ((unused)),
+                            int id, int data __attribute__ ((unused)))
+ {
+-    if (session[id])
+-        session[id]->eof = 1;
+-
++    clif_eof(id);
+     return 0;
+ }
+ 
++void clif_eof(int fd)
++{
++    if (!session[fd])
++        return;
++
++    struct map_session_data *sd = session[fd]->session_data;
++    if (sd && sd->areanpc_id)
++        npc_untouch_areanpc(sd);
++
++    session[fd]->eof = 1;
++}
++
+ /*==========================================
+  *
+  *------------------------------------------
+@@ -10255,7 +10265,7 @@ int clif_check_packet_flood(fd, cmd)
+             printf("packet flood detected from %s [0x%x]\n", sd->status.name, cmd);
+             if (battle_config.packet_spam_kick)
+             {
+-                session[fd]->eof = 1; // Kick
++                clif_eof(fd);   // Kick
+                 return 1;
+             }
+             sd->packet_flood_in = 0;
+@@ -10415,11 +10425,11 @@ static int clif_parse (int fd)
+     {
+         if (RFIFOREST (fd) < 2)
+         {                       // too small a packet disconnect
+-            session[fd]->eof = 1;
++            clif_eof(fd);
+         }
+         if (RFIFOW (fd, 0) != 0x72)
+         {                       // first packet not auth, disconnect
+-            session[fd]->eof = 1;
++            clif_eof(fd);
+         }
+     }
+ 
+@@ -10470,7 +10480,7 @@ static int clif_parse (int fd)
+                 RFIFOSKIP (fd, 2);
+                 break;
+             case 0x7532:       // 接続の切断 
+-                session[fd]->eof = 1;
++                clif_eof(fd);
+                 break;
+         }
+         return 0;
+@@ -10489,7 +10499,7 @@ static int clif_parse (int fd)
+         packet_len = RFIFOW (fd, 2);
+         if (packet_len < 4 || packet_len > 32768)
+         {
+-            session[fd]->eof = 1;
++            clif_eof(fd);
+             return 0;           // Runt packet (variable out of bounds)
+         }
+     }
+diff --git a/src/map/clif.h b/src/map/clif.h
+index 26e2d06..3383ca9 100644
+--- a/src/map/clif.h
++++ b/src/map/clif.h
+@@ -18,6 +18,8 @@ typedef unsigned int in_addr_t;
+ void clif_setip (char *);
+ void clif_setport (int);
+ 
++void clif_eof(int fd);
++
+ in_addr_t clif_getip (void);
+ int  clif_getport (void);
+ int  clif_countusers (void);
+diff --git a/src/map/npc.c b/src/map/npc.c
+index e3574de..c5b4f9a 100644
+--- a/src/map/npc.c
++++ b/src/map/npc.c
+@@ -80,6 +80,8 @@ int npc_enable_sub (struct block_list *bl, va_list ap)
+         memcpy (name, nd->name, sizeof(nd->name));
+         if (sd->areanpc_id == nd->bl.id)
+             return 1;
++        if (sd->areanpc_id)
++            npc_untouch_areanpc(sd);
+         sd->areanpc_id = nd->bl.id;
+         npc_event (sd, strcat (name, "::OnTouch"), 0);
+     }
+@@ -785,7 +787,7 @@ int npc_event (struct map_session_data *sd, const char *eventname,
+ 
+     xs = nd->u.scr.xs;
+     ys = nd->u.scr.ys;
+-    if (mob_kill != 2 && xs >= 0 && ys >= 0)
++    if (mob_kill != 2 && mob_kill != 3 && xs >= 0 && ys >= 0)
+     {
+         if (nd->bl.m != sd->bl.m)
+             return 1;
+@@ -942,6 +944,9 @@ int npc_touch_areanpc (struct map_session_data *sd, int m, int x, int y)
+             char *name = (char *) aCalloc (50, sizeof (char));
+             memcpy (name, map[m].npc[i]->name, 24);
+ 
++            if (sd->areanpc_id)
++                npc_untouch_areanpc(sd);
++
+             sd->areanpc_id = map[m].npc[i]->bl.id;
+             if (npc_event (sd, strcat (name, "::OnTouch"), 0) > 0)
+                 npc_click (sd, map[m].npc[i]->bl.id, 0);
+@@ -954,6 +959,34 @@ int npc_touch_areanpc (struct map_session_data *sd, int m, int x, int y)
+     return 0;
+ }
+ 
++int npc_untouch_areanpc (struct map_session_data *sd)
++{
++    nullpo_retr (1, sd);
++
++    struct npc_data *nd;
++
++    if (sd->npc_id || !sd->areanpc_id)
++        return 1;
++
++    nd = (struct npc_data *) map_id2bl (sd->areanpc_id);
++    if (!nd || nd->bl.subtype != SCRIPT)
++    {
++        sd->areanpc_id = 0;
++        return 1;
++    }
++
++    char *name = (char *) aCalloc (50, sizeof (char));
++    memcpy (name, nd->name, 24);
++
++    npc_event (sd, strcat (name, "::OnUnTouch"), 3);
++
++    free (name);
++
++    sd->areanpc_id = 0;
++
++    return 0;
++}
++
+ /*==========================================
+  * 近くかどうかの判定 
+  *------------------------------------------
+diff --git a/src/map/npc.h b/src/map/npc.h
+index 21a1118..bbcc540 100644
+--- a/src/map/npc.h
++++ b/src/map/npc.h
+@@ -14,6 +14,7 @@ int  npc_event (struct map_session_data *sd, const char *npcname, int);
+ int  npc_timer_event (const char *eventname);   // Added by RoVeRT
+ int  npc_command (struct map_session_data *sd, char *npcname, char *command);
+ int  npc_touch_areanpc (struct map_session_data *, int, int, int);
++int  npc_untouch_areanpc (struct map_session_data *sd);
+ int  npc_click (struct map_session_data *, int, int);
+ int  npc_scriptcont (struct map_session_data *, int);
+ int  npc_checknear (struct map_session_data *, int);
+diff --git a/src/map/pc.c b/src/map/pc.c
+index f4bb09e..ebc0c32 100644
+--- a/src/map/pc.c
++++ b/src/map/pc.c
+@@ -4912,7 +4912,7 @@ static int pc_walk (int tid, unsigned int tick, int id, int data)
+         if (map_getcell (sd->bl.m, x, y) & 0x80)
+             npc_touch_areanpc (sd, sd->bl.m, x, y);
+         else
+-            sd->areanpc_id = 0;
++            npc_untouch_areanpc(sd);
+     }
+     if ((i = calc_next_walk_step (sd)) > 0)
+     {
+@@ -5021,7 +5021,7 @@ void pc_touch_all_relevant_npcs (struct map_session_data *sd)
+     if (map_getcell (sd->bl.m, sd->bl.x, sd->bl.y) & 0x80)
+         npc_touch_areanpc (sd, sd->bl.m, sd->bl.x, sd->bl.y);
+     else
+-        sd->areanpc_id = 0;
++        npc_untouch_areanpc(sd);
+ }
+ 
+ /*==========================================
+-- 
+2.1.0
+

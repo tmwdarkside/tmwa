@@ -1,0 +1,97 @@
+From caf57a88c14d2d4fbd235c16f059c971727db9de Mon Sep 17 00:00:00 2001
+From: Andrei Karas <akaras@inbox.ru>
+Date: Mon, 20 Dec 2010 20:28:43 +0200
+Subject: [PATCH 126/226] Port from eathena script command dispbottom.
+
+---
+ src/map/clif.c   |  4 ++--
+ src/map/clif.h   |  4 ++--
+ src/map/script.c | 21 +++++++++++++++++++++
+ 3 files changed, 25 insertions(+), 4 deletions(-)
+
+diff --git a/src/map/clif.c b/src/map/clif.c
+index cc6b6be..38ed2c4 100644
+--- a/src/map/clif.c
++++ b/src/map/clif.c
+@@ -4741,7 +4741,7 @@ int clif_status_change (struct block_list *bl, int type, int flag)
+  * Send message (modified by [Yor])
+  *------------------------------------------
+  */
+-int clif_displaymessage (const int fd, char *mes)
++int clif_displaymessage (const int fd, const char *mes)
+ {
+     nullpo_retr (0, mes);
+ 
+@@ -6778,7 +6778,7 @@ void clif_sitting (int fd __attribute__ ((unused)), struct map_session_data *sd)
+  *
+  *------------------------------------------
+  */
+-int clif_disp_onlyself (struct map_session_data *sd, char *mes, int len)
++int clif_disp_onlyself (struct map_session_data *sd, const char *mes, int len)
+ {
+     nullpo_retr (0, sd);
+     nullpo_retr (0, mes);
+diff --git a/src/map/clif.h b/src/map/clif.h
+index a7da92d..26e2d06 100644
+--- a/src/map/clif.h
++++ b/src/map/clif.h
+@@ -258,8 +258,8 @@ int  clif_guild_oppositionack (struct map_session_data *sd, int flag);
+ int  clif_guild_broken (struct map_session_data *sd, int flag);
+ 
+ // atcommand
+-int  clif_displaymessage (const int fd, char *mes);
+-int  clif_disp_onlyself (struct map_session_data *sd, char *mes, int len);
++int  clif_displaymessage (const int fd, const char *mes);
++int  clif_disp_onlyself (struct map_session_data *sd, const char *mes, int len);
+ int  clif_GMmessage (struct block_list *bl, char *mes, int len, int flag);
+ int  clif_heal (int fd, int type, int val);
+ int  clif_resurrection (struct block_list *bl, int type);
+diff --git a/src/map/script.c b/src/map/script.c
+index f62a251..ce209de 100644
+--- a/src/map/script.c
++++ b/src/map/script.c
+@@ -425,6 +425,7 @@ int  buildin_setcollision (struct script_state *st); // [4144]
+ int  buildin_spell (struct script_state *st); // [4144]
+ int  buildin_npcclick (struct script_state *st); // [4144]
+ int  buildin_npcattach (struct script_state *st); // [4144]
++int  buildin_dispbottom (struct script_state *st); //added from jA [Lupus]
+ 
+ void push_val (struct script_stack *stack, int type, int val);
+ int  run_func (struct script_state *st);
+@@ -872,6 +873,8 @@ struct
+     buildin_npcclick, "npcclick", "s"}, // [4144]
+     {
+     buildin_npcattach, "npcattach", "s"}, // [4144]
++    {
++    buildin_dispbottom, "dispbottom", "s"}, //added from jA [Lupus]
+         // End Additions
+     {
+ NULL, NULL, NULL},};
+@@ -8125,6 +8128,24 @@ BUILDIN_FUNC(npcattach)
+     return 0;
+ }
+ 
++/*==========================================
++ * Displays a message for the player only (like system messages like "you got an apple" )
++ *------------------------------------------*/
++BUILDIN_FUNC(dispbottom)
++{
++    TBL_PC *sd = script_rid2sd(st);
++    const char *message;
++    if (!sd)
++        return 0;
++
++    message = script_getstr(st, 2);
++    if (!message)
++        return 0;
++
++    clif_displaymessage(sd->fd, message);
++    return 0;
++}
++
+ //
+ // ��s��main
+ //
+-- 
+2.1.0
+

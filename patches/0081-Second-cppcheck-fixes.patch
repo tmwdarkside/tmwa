@@ -1,0 +1,916 @@
+From 1929d4d198546522dbc4ca4b95608e485cba4974 Mon Sep 17 00:00:00 2001
+From: Andrei Karas <akaras@inbox.ru>
+Date: Sat, 4 Dec 2010 19:00:31 +0200
+Subject: [PATCH 081/226] Second cppcheck fixes.
+
+---
+ src/map/clif.c                   | 53 ++++++++++++++++++++------------------
+ src/map/guild.c                  |  9 +++----
+ src/map/intif.c                  |  2 +-
+ src/map/itemdb.c                 | 11 ++++----
+ src/map/magic-interpreter-base.c |  5 ++--
+ src/map/magic-stmt.c             |  6 ++---
+ src/map/map.c                    | 12 +++++----
+ src/map/mob.c                    | 54 +++++++++++++++++++++------------------
+ src/map/npc.c                    | 55 ++++++++++++++++------------------------
+ src/map/party.c                  |  5 ++--
+ src/map/path.c                   |  4 +--
+ 11 files changed, 107 insertions(+), 109 deletions(-)
+
+diff --git a/src/map/clif.c b/src/map/clif.c
+index 4a825c7..aa01fe4 100644
+--- a/src/map/clif.c
++++ b/src/map/clif.c
+@@ -837,13 +837,12 @@ static int current_weapon(struct map_session_data *sd)
+  */
+ static int clif_set0078 (struct map_session_data *sd, unsigned char *buf)
+ {
+-    int  level = 0;
+-
+     nullpo_retr (0, sd);
+     nullpo_retr (0, buf);
+ 
+     if (sd->disguise > 23 && sd->disguise < 4001)
+     {                           // mob disguises [Valaris]
++        int  level = 0;
+         WBUFW (buf, 0) = 0x78;
+         WBUFL (buf, 2) = sd->bl.id;
+         WBUFW (buf, 6) = battle_get_speed (&sd->bl);
+@@ -928,12 +927,12 @@ static int clif_set0078 (struct map_session_data *sd, unsigned char *buf)
+  */
+ static int clif_set007b (struct map_session_data *sd, unsigned char *buf)
+ {
+-    int  level = 0;
+     nullpo_retr (0, sd);
+     nullpo_retr (0, buf);
+ 
+     if (sd->disguise > 23 && sd->disguise < 4001)
+     {                           // mob disguises [Valaris]
++        int  level = 0;
+         WBUFW (buf, 0) = 0x7b;
+         WBUFL (buf, 2) = sd->bl.id;
+         WBUFW (buf, 6) = battle_get_speed (&sd->bl);
+@@ -1509,14 +1508,11 @@ int clif_walkok (struct map_session_data *sd)
+  */
+ int clif_movechar (struct map_session_data *sd)
+ {
+-    int  fd;
+     int  len;
+     unsigned char buf[256];
+ 
+     nullpo_retr (0, sd);
+ 
+-    fd = sd->fd;
+-
+     len = clif_set007b (sd, buf);
+ 
+     if (sd->disguise > 23 && sd->disguise < 4001)
+@@ -1899,7 +1895,7 @@ int clif_cutin (struct map_session_data *sd, char *image, int type)
+  */
+ int clif_additem (struct map_session_data *sd, int n, int amount, int fail)
+ {
+-    int  fd, j;
++    int  fd;
+     unsigned char *buf;
+ 
+     nullpo_retr (0, sd);
+@@ -1954,6 +1950,7 @@ int clif_additem (struct map_session_data *sd, int n, int amount, int fail)
+         }
+         else
+         {
++            int  j;
+             if (sd->status.inventory[n].card[0] > 0
+                 && (j = itemdb_viewid (sd->status.inventory[n].card[0])) > 0)
+                 WBUFW (buf, 11) = j;
+@@ -3303,7 +3300,7 @@ int clif_tradestart (struct map_session_data *sd, int type)
+ int clif_tradeadditem (struct map_session_data *sd,
+                        struct map_session_data *tsd, int index, int amount)
+ {
+-    int  fd, j;
++    int  fd;
+ 
+     nullpo_retr (0, sd);
+     nullpo_retr (0, tsd);
+@@ -3351,6 +3348,7 @@ int clif_tradeadditem (struct map_session_data *sd,
+         }
+         else
+         {
++            int  j;
+             if (sd->status.inventory[index].card[0] > 0
+                 && (j =
+                     itemdb_viewid (sd->status.inventory[index].card[0])) > 0)
+@@ -3490,7 +3488,7 @@ int clif_updatestorageamount (struct map_session_data *sd,
+ int clif_storageitemadded (struct map_session_data *sd, struct storage *stor,
+                            int index, int amount)
+ {
+-    int  fd, j;
++    int  fd;
+ 
+     nullpo_retr (0, sd);
+     nullpo_retr (0, stor);
+@@ -3524,6 +3522,7 @@ int clif_storageitemadded (struct map_session_data *sd, struct storage *stor,
+     }
+     else
+     {
++        int  j;
+         if (stor->storage_[index].card[0] > 0
+             && (j = itemdb_viewid (stor->storage_[index].card[0])) > 0)
+             WFIFOW (fd, 13) = j;
+@@ -3579,7 +3578,7 @@ int clif_guildstorageitemadded (struct map_session_data *sd,
+                                 struct guild_storage *stor, int index,
+                                 int amount)
+ {
+-    int  view, fd, j;
++    int  view, fd;
+ 
+     nullpo_retr (0, sd);
+     nullpo_retr (0, stor);
+@@ -3613,6 +3612,7 @@ int clif_guildstorageitemadded (struct map_session_data *sd,
+     }
+     else
+     {
++        int  j;
+         if (stor->storage_[index].card[0] > 0
+             && (j = itemdb_viewid (stor->storage_[index].card[0])) > 0)
+             WFIFOW (fd, 13) = j;
+@@ -5160,7 +5160,7 @@ int clif_item_skill (struct map_session_data *sd, int skillid, int skilllv,
+ int clif_cart_additem (struct map_session_data *sd, int n, int amount,
+                        int fail __attribute__ ((unused)))
+ {
+-    int  view, j, fd;
++    int  view, fd;
+     unsigned char *buf;
+ 
+     nullpo_retr (0, sd);
+@@ -5194,6 +5194,7 @@ int clif_cart_additem (struct map_session_data *sd, int n, int amount,
+     }
+     else
+     {
++        int  j;
+         if (sd->status.cart[n].card[0] > 0
+             && (j = itemdb_viewid (sd->status.cart[n].card[0])) > 0)
+             WBUFW (buf, 13) = j;
+@@ -5537,7 +5538,6 @@ int clif_party_leaved (struct party *p, struct map_session_data *sd,
+                        int account_id, char *name, int flag)
+ {
+     unsigned char buf[64];
+-    int  i;
+ 
+     nullpo_retr (0, p);
+     nullpo_retr (0, name);
+@@ -5550,9 +5550,12 @@ int clif_party_leaved (struct party *p, struct map_session_data *sd,
+     if ((flag & 0xf0) == 0)
+     {
+         if (sd == NULL)
++        {
++            int  i;
+             for (i = 0; i < MAX_PARTY; i++)
+                 if ((sd = p->member[i].sd) != NULL)
+                     break;
++        }
+         if (sd != NULL)
+             clif_send (buf, packet_len_table[0x105], &sd->bl, PARTY);
+     }
+@@ -8226,7 +8229,7 @@ void clif_parse_SkillUp (int fd, struct map_session_data *sd)
+  */
+ void clif_parse_UseSkillToId (int fd, struct map_session_data *sd)
+ {
+-    int  skillnum, skilllv, lv, target_id;
++    int  skillnum, skilllv, target_id;
+     unsigned int tick = gettick ();
+ 
+     nullpo_retv (sd);
+@@ -8266,6 +8269,7 @@ void clif_parse_UseSkillToId (int fd, struct map_session_data *sd)
+     }
+     else
+     {
++        int  lv;
+         sd->skillitem = sd->skillitemlv = -1;
+         if (skillnum == MO_EXTREMITYFIST)
+         {
+@@ -8303,7 +8307,7 @@ void clif_parse_UseSkillToId (int fd, struct map_session_data *sd)
+  */
+ void clif_parse_UseSkillToPos (int fd, struct map_session_data *sd)
+ {
+-    int  skillnum, skilllv, lv, x, y;
++    int  skillnum, skilllv, x, y;
+     unsigned int tick = gettick ();
+     int  skillmoreinfo;
+ 
+@@ -8357,6 +8361,7 @@ void clif_parse_UseSkillToPos (int fd, struct map_session_data *sd)
+     }
+     else
+     {
++        int  lv;
+         sd->skillitem = sd->skillitemlv = -1;
+         if ((lv = pc_checkskill (sd, skillnum)) > 0)
+         {
+@@ -9240,7 +9245,6 @@ void clif_parse_GMReqNoChat (int fd, struct map_session_data *sd)
+     int  limit = RFIFOW (fd, 7);
+     struct block_list *bl = map_id2bl (tid);
+     struct map_session_data *dstsd;
+-    int  dstfd;
+ 
+     nullpo_retv (sd);
+ 
+@@ -9258,6 +9262,7 @@ void clif_parse_GMReqNoChat (int fd, struct map_session_data *sd)
+         if ((tid == bl->id && type == 2 && !pc_isGM (sd))
+             || (pc_isGM (sd) > pc_isGM (dstsd)))
+         {
++            int  dstfd;
+             dstfd = dstsd->fd;
+             WFIFOW (dstfd, 0) = 0x14b;
+             WFIFOB (dstfd, 2) = (type == 2) ? 1 : type;
+@@ -9301,7 +9306,6 @@ void clif_parse_PMIgnore (int fd, struct map_session_data *sd)
+     char output[1024];
+     char *nick;                 // S 00cf <nick>.24B <type>.B: 00 (/ex nick) deny speech from nick, 01 (/in nick) allow speech from nick
+     int  i;
+-    int  pos;
+ 
+     nullpo_retv (sd);
+ 
+@@ -9314,6 +9318,7 @@ void clif_parse_PMIgnore (int fd, struct map_session_data *sd)
+     {                           // type
+         if (strlen (nick) >= 4 && strlen (nick) < 24)
+         {                       // do something only if nick can be exist
++            int  pos;
+             pos = -1;
+             for (i = 0; i < (sizeof (sd->ignore) / sizeof (sd->ignore[0]));
+                  i++)
+@@ -9482,18 +9487,18 @@ void clif_parse_PMIgnoreAll (int fd, struct map_session_data *sd)
+     return;
+ }
+ 
+-void clif_parse_skillMessage (int fd, struct map_session_data *sd __attribute__ ((unused)))
++void clif_parse_skillMessage (int fd __attribute__ ((unused)), struct map_session_data *sd __attribute__ ((unused)))
+ {                               // Added by RoVeRT
+-    int  skillid, skilllv, x, y;
+-    char *mes;
++//    int  skillid, skilllv, x, y;
++//    char *mes;
+ 
+-    skilllv = RFIFOW (fd, 2);
+-    skillid = RFIFOW (fd, 4);
++//    skilllv = RFIFOW (fd, 2);
++//    skillid = RFIFOW (fd, 4);
+ 
+-    y = RFIFOB (fd, 6);
+-    x = RFIFOB (fd, 8);
++//    y = RFIFOB (fd, 6);
++//    x = RFIFOB (fd, 8);
+ 
+-    mes = RFIFOP (fd, 10);
++//    mes = RFIFOP (fd, 10);
+ 
+     // skill 220 = graffiti
+ //  printf("skill: %d %d location: %3d %3d message: %s\n", skillid, skilllv, x, y, (char*)mes);
+diff --git a/src/map/guild.c b/src/map/guild.c
+index 6571131..ec5045a 100644
+--- a/src/map/guild.c
++++ b/src/map/guild.c
+@@ -398,11 +398,10 @@ int guild_created (int account_id, int guild_id)
+     /* The guild name is valid and not already taken. */
+     if (guild_id > 0)
+     {
+-        struct guild *g;
+         sd->status.guild_id = guild_id;
+         sd->guild_sended = 0;
+ 
+-        if ((g = numdb_search (guild_db, guild_id)) != NULL)
++        if (numdb_search (guild_db, guild_id) != NULL)
+         {
+             printf ("guild_created(): ID already exists!\n");
+             exit (1);
+@@ -690,9 +689,8 @@ int guild_member_added (int guild_id, int account_id,
+                         int char_id __attribute__ ((unused)), int flag)
+ {
+     struct map_session_data *sd = map_id2sd (account_id), *sd2;
+-    struct guild *g;
+ 
+-    if ((g = guild_search (guild_id)) == NULL)
++    if (guild_search (guild_id) == NULL)
+         return 0;
+ 
+     if ((sd == NULL || sd->guild_invite == 0) && flag == 0)
+@@ -1913,9 +1911,8 @@ int guild_checkcastles (struct guild *g)
+ {
+     nullpo_retr (0, g);
+ 
+-    int  i, nb_cas = 0, id, cas_id = 0;
++    int  i, nb_cas = 0, cas_id = 0;
+     struct guild_castle *gc;
+-    id = g->guild_id;
+     for (i = 0; i < MAX_GUILDCASTLE; i++)
+     {
+         gc = guild_castle_search (i);
+diff --git a/src/map/intif.c b/src/map/intif.c
+index d86fef4..eaaf619 100644
+--- a/src/map/intif.c
++++ b/src/map/intif.c
+@@ -561,7 +561,6 @@ int intif_guild_castle_datasave (int castle_id, int index, int value)
+ int intif_parse_WisMessage (int fd)
+ {                               // rewritten by [Yor]
+     struct map_session_data *sd;
+-    int  i;
+     char *wisp_source;
+ 
+     if (battle_config.etc_log)
+@@ -578,6 +577,7 @@ int intif_parse_WisMessage (int fd)
+         else
+         {
+             wisp_source = RFIFOP (fd, 8);   // speed up
++            int  i;
+             // if player ignore the source character
+             for (i = 0; i < (sizeof (sd->ignore) / sizeof (sd->ignore[0]));
+                  i++)
+diff --git a/src/map/itemdb.c b/src/map/itemdb.c
+index 5b77b83..a30e236 100644
+--- a/src/map/itemdb.c
++++ b/src/map/itemdb.c
+@@ -110,7 +110,7 @@ struct item_data *itemdb_searchname (const char *str)
+  */
+ int itemdb_searchrandomid (int flags)
+ {
+-    int  nameid = 0, i, index, count;
++    int  nameid = 0, count;
+     struct random_item_data *list = NULL;
+ 
+     struct
+@@ -140,8 +140,10 @@ int itemdb_searchrandomid (int flags)
+ 
+         if (count > 0)
+         {
++            int  i;
+             for (i = 0; i < 1000; i++)
+             {
++                int  index;
+                 index = MRAND (count);
+                 if (MRAND (1000000) < list[index].per)
+                 {
+@@ -778,10 +780,9 @@ static int itemdb_final (void *key __attribute__ ((unused)),
+ 
+     nullpo_retr (0, id = data);
+ 
+-    if (id->use_script)
+-        free (id->use_script);
+-    if (id->equip_script)
+-        free (id->equip_script);
++    free (id->use_script);
++    free (id->equip_script);
++    free (id->unequip_script);
+     free (id);
+ 
+     return 0;
+diff --git a/src/map/magic-interpreter-base.c b/src/map/magic-interpreter-base.c
+index 9d21832..d34df34 100644
+--- a/src/map/magic-interpreter-base.c
++++ b/src/map/magic-interpreter-base.c
+@@ -521,11 +521,12 @@ void spell_bind (character_t * subject, invocation_t * invocation)
+         if (invocation->flags & INVOCATION_FLAG_BOUND
+             || invocation->subject || invocation->next_invocation)
+         {
+-            int *i = NULL;
++//            int *i = NULL;
+             fprintf (stderr,
+                      "[magic] INTERNAL ERROR: Attempt to re-bind spell invocation `%s'\n",
+                      invocation->spell->name);
+-            *i = 1;
++//            *i = 1;
++            exit(1);
+             return;
+         }
+ 
+diff --git a/src/map/magic-stmt.c b/src/map/magic-stmt.c
+index d1e4885..ac16148 100644
+--- a/src/map/magic-stmt.c
++++ b/src/map/magic-stmt.c
+@@ -1010,12 +1010,12 @@ static int op_resurrect (env_t * env __attribute__ ((unused)), int args_nr __att
+     if (!sd || !pc_isdead (sd))
+         return 1;
+ 
+-    int perc_hp = (ARGINT (1) > 0) ? (ARGINT (1) > 100) ? 100 : (ARGINT (1) / 100) : 50;
+-    int perc_mp = (ARGINT (2) > 0) ? (ARGINT (2) > 100) ? 100 : (ARGINT (2) / 100) : 50;
+-
+     // 3rd param == 1 then restore the char hp and sp in percentage
+     if(ARGINT (3) == 1)
+     {
++        int perc_hp = (ARGINT (1) > 0) ? (ARGINT (1) > 100) ? 100 : (ARGINT (1) / 100) : 50;
++        int perc_mp = (ARGINT (2) > 0) ? (ARGINT (2) > 100) ? 100 : (ARGINT (2) / 100) : 50;
++
+         sd->status.hp = sd->status.max_hp * perc_hp;
+         sd->status.sp = sd->status.max_sp * perc_mp;
+     }
+diff --git a/src/map/map.c b/src/map/map.c
+index 1b1e5c8..334e61f 100644
+--- a/src/map/map.c
++++ b/src/map/map.c
+@@ -749,7 +749,8 @@ int map_delobjectnofree (int id, int type)
+     {
+         fprintf (stderr, "Incorrect type: expected %d, got %d\n", type,
+                  object[id]->type);
+-        *((char *) 0) = 0;      // break for backtrace
++        exit(1);
++//        *((char *) 0) = 0;      // break for backtrace
+     }
+ 
+     map_delblock (object[id]);
+@@ -1703,6 +1704,7 @@ static struct
+ 
+ #define NO_WATER 1000000
+ 
++/*
+ static int map_waterheight (char *mapname)
+ {
+     if (!mapname)
+@@ -1717,6 +1719,7 @@ static int map_waterheight (char *mapname)
+     }
+     return NO_WATER;
+ }
++*/
+ 
+ static void map_readwater (char *watertxt)
+ {
+@@ -1761,13 +1764,12 @@ static void map_readwater (char *watertxt)
+ static int map_readmap (int m, char *fn, char *alias __attribute__ ((unused)))
+ {
+     unsigned char *gat = "";
+-    int  s;
+     int  x, y, xs, ys;
+     struct gat_1cell
+     {
+         char type;
+     }   *p;
+-    int  wh;
++//    int  wh;
+     size_t size;
+ 
+     // read & convert fn
+@@ -1782,7 +1784,7 @@ static int map_readmap (int m, char *fn, char *alias __attribute__ ((unused)))
+     xs = map[m].xs = *(short *) (gat);
+     ys = map[m].ys = *(short *) (gat + 2);
+     printf ("\n%i %i\n", xs, ys);
+-    map[m].gat = calloc (s = map[m].xs * map[m].ys, 1);
++    map[m].gat = calloc (map[m].xs * map[m].ys, 1);
+     if (map[m].gat == NULL)
+     {
+         printf ("out of memory : map_readmap gat\n");
+@@ -1794,7 +1796,7 @@ static int map_readmap (int m, char *fn, char *alias __attribute__ ((unused)))
+     memset (&map[m].flag, 0, sizeof (map[m].flag));
+     if (battle_config.pk_mode)
+         map[m].flag.pvp = 1;    // make all maps pvp for pk_mode [Valaris]
+-    wh = map_waterheight (map[m].name);
++//    wh = map_waterheight (map[m].name);
+     for (y = 0; y < ys; y++)
+     {
+         p = (struct gat_1cell *) (gat + y * xs + 4);
+diff --git a/src/map/mob.c b/src/map/mob.c
+index 472c395..2e4e18e 100644
+--- a/src/map/mob.c
++++ b/src/map/mob.c
+@@ -377,11 +377,11 @@ int mob_once_spawn (struct map_session_data *sd, char *mapname,
+ 
+     if (class < 0)
+     {                           // ÉâÉìÉ_ÉÄÇ…è¢ä´
+-        int  i = 0;
+         int  j = -class - 1;
+-        int  k;
+         if (j >= 0 && j < MAX_RANDOMMONSTER)
+         {
++            int  i = 0;
++            int  k;
+             do
+             {
+                 class = MPRAND (1001, 1000);
+@@ -529,10 +529,7 @@ int mob_spawn_guardian (struct map_session_data *sd, char *mapname,
+         return 0;
+ 
+     struct mob_data *md = NULL;
+-    int  m, count = 1, lv = 255;
+-
+-    if (sd)
+-        lv = sd->status.base_level;
++    int  m, count = 1;
+ 
+     if (sd && strcmp (mapname, "this") == 0)
+         m = sd->bl.m;
+@@ -773,11 +770,9 @@ static int mob_walktoxy_sub (struct mob_data *md);
+  */
+ static int mob_walk (struct mob_data *md, unsigned int tick, int data)
+ {
+-    int  moveblock;
+-    int  i, ctype;
++    int  i;
+     static int dirx[8] = { 0, -1, -1, -1, 0, 1, 1, 1 };
+     static int diry[8] = { 1, 1, 0, -1, -1, -1, 0, 1 };
+-    int  x, y, dx, dy;
+ 
+     nullpo_retr (0, md);
+ 
+@@ -798,6 +793,10 @@ static int mob_walk (struct mob_data *md, unsigned int tick, int data)
+     }
+     else
+     {
++        int  moveblock;
++        int  ctype;
++        int  x, y, dx, dy;
++
+         if (md->walkpath.path[md->walkpath.path_pos] >= 8)
+             return 1;
+ 
+@@ -1628,7 +1627,7 @@ static int mob_ai_sub_hard_activesearch (struct block_list *bl, va_list ap)
+ {
+     struct map_session_data *tsd = NULL;
+     struct mob_data *smd, *tmd = NULL;
+-    int  mode, race, dist, *pcc;
++    int  mode, *pcc;
+ 
+     nullpo_retr (0, bl);
+     nullpo_retr (0, ap);
+@@ -1654,6 +1653,7 @@ static int mob_ai_sub_hard_activesearch (struct block_list *bl, va_list ap)
+     // ÉAÉNÉeÉBÉuÇ≈É^Å[ÉQÉbÉgéÀíˆì‡Ç…Ç¢ÇÈÇ»ÇÁÅAÉçÉbÉNÇ∑ÇÈ
+     if (mode & 0x04)
+     {
++        int  race;
+         race = mob_db[smd->class].race;
+         //ëŒè€Ç™PCÇÃèÍçá
+         if (tsd &&
+@@ -1661,8 +1661,7 @@ static int mob_ai_sub_hard_activesearch (struct block_list *bl, va_list ap)
+             tsd->bl.m == smd->bl.m &&
+             tsd->invincible_timer == -1 &&
+             !pc_isinvisible (tsd) &&
+-            (dist =
+-             distance (smd->bl.x, smd->bl.y, tsd->bl.x, tsd->bl.y)) < 9)
++            (distance (smd->bl.x, smd->bl.y, tsd->bl.x, tsd->bl.y)) < 9)
+         {
+             if (mode & 0x20 ||
+                 (tsd->sc_data[SC_TRICKDEAD].timer == -1 &&
+@@ -1681,8 +1680,7 @@ static int mob_ai_sub_hard_activesearch (struct block_list *bl, va_list ap)
+         //ëŒè€Ç™MobÇÃèÍçá
+         else if (tmd &&
+                  tmd->bl.m == smd->bl.m &&
+-                 (dist =
+-                  distance (smd->bl.x, smd->bl.y, tmd->bl.x, tmd->bl.y)) < 9)
++                 (distance (smd->bl.x, smd->bl.y, tmd->bl.x, tmd->bl.y)) < 9)
+         {
+             if (mob_can_reach (smd, bl, 12) &&  // ìûíBâ¬î\ê´îªíË
+                 MRAND (1000) < 1000 / (++(*pcc)))
+@@ -1703,7 +1701,7 @@ static int mob_ai_sub_hard_activesearch (struct block_list *bl, va_list ap)
+ static int mob_ai_sub_hard_lootsearch (struct block_list *bl, va_list ap)
+ {
+     struct mob_data *md;
+-    int  mode, dist, *itc;
++    int  mode, *itc;
+ 
+     nullpo_retr (0, bl);
+     nullpo_retr (0, ap);
+@@ -1726,7 +1724,7 @@ static int mob_ai_sub_hard_lootsearch (struct block_list *bl, va_list ap)
+                 && md->lootitem_count >= LOOTITEM_SIZE))
+             return 0;
+         if (bl->m == md->bl.m
+-            && (dist = distance (md->bl.x, md->bl.y, bl->x, bl->y)) < 9)
++            && distance (md->bl.x, md->bl.y, bl->x, bl->y) < 9)
+         {
+             if (mob_can_reach (md, bl, 12) &&   // Reachability judging
+                 MRAND (1000) < 1000 / (++(*itc)))
+@@ -1791,7 +1789,7 @@ static int mob_ai_sub_hard_slavemob (struct mob_data *md, unsigned int tick)
+ {
+     struct mob_data *mmd = NULL;
+     struct block_list *bl;
+-    int  mode, race, old_dist;
++    int  mode, old_dist;
+ 
+     nullpo_retr (0, md);
+ 
+@@ -1891,6 +1889,7 @@ static int mob_ai_sub_hard_slavemob (struct mob_data *md, unsigned int tick)
+         if (sd != NULL && !pc_isdead (sd) && sd->invincible_timer == -1
+             && !pc_isinvisible (sd))
+         {
++            int  race;
+ 
+             race = mob_db[md->class].race;
+             if (mode & 0x20 ||
+@@ -2011,7 +2010,7 @@ static int mob_ai_sub_hard (struct block_list *bl, va_list ap)
+     struct block_list *tbl = NULL;
+     struct flooritem_data *fitem;
+     unsigned int tick;
+-    int  i, dx, dy, ret, dist;
++    int  i, dist;
+     int  attack_type = 0;
+     int  mode, race;
+ 
+@@ -2136,6 +2135,8 @@ static int mob_ai_sub_hard (struct block_list *bl, va_list ap)
+     {
+         if ((tbl = map_id2bl (md->target_id)))
+         {
++            int  ret;
++            int  dx, dy;
+             if (tbl->type == BL_PC)
+                 tsd = (struct map_session_data *) tbl;
+             else if (tbl->type == BL_MOB)
+@@ -2501,7 +2502,6 @@ static int mob_delay_item_drop (int tid __attribute__ ((unused)),
+ {
+     struct delay_item_drop *ditem;
+     struct item temp_item;
+-    int  flag;
+ 
+     nullpo_retr (0, ditem = (struct delay_item_drop *) id);
+ 
+@@ -2512,6 +2512,7 @@ static int mob_delay_item_drop (int tid __attribute__ ((unused)),
+ 
+     if (battle_config.item_auto_get == 1)
+     {
++        int  flag;
+         if (ditem->first_sd
+             && (flag =
+                 pc_additem (ditem->first_sd, &temp_item, ditem->amount)))
+@@ -2541,12 +2542,12 @@ static int mob_delay_item_drop2 (int tid __attribute__ ((unused)),
+                                  int id, int data __attribute__ ((unused)))
+ {
+     struct delay_item_drop2 *ditem;
+-    int  flag;
+ 
+     nullpo_retr (0, ditem = (struct delay_item_drop2 *) id);
+ 
+     if (battle_config.item_auto_get == 1)
+     {
++        int  flag;
+         if (ditem->first_sd
+             && (flag =
+                 pc_additem (ditem->first_sd, &ditem->item_data,
+@@ -2673,7 +2674,8 @@ int mob_damage (struct block_list *src, struct mob_data *md, int damage,
+     unsigned int tick = gettick ();
+     struct map_session_data *mvp_sd = NULL, *second_sd = NULL, *third_sd =
+         NULL;
+-    double dmg_rate, tdmg, temp;
++    double temp;
++//    double tdmg, temp;
+     struct item item;
+     int  ret;
+     int  drop_rate;
+@@ -2946,7 +2948,7 @@ int mob_damage (struct block_list *src, struct mob_data *md, int damage,
+     // mapäOÇ…è¡Ç¶ÇΩêlÇÕåvéZÇ©ÇÁèúÇ≠ÇÃÇ≈
+     // overkillï™ÇÕñ≥Ç¢ÇØÇ«sumÇÕmax_hpÇ∆ÇÕà·Ç§
+ 
+-    tdmg = 0;
++//    tdmg = 0;
+     for (i = 0, count = 0, mvp_damage = 0; i < DAMAGELOG_SIZE; i++)
+     {
+         if (md->dmglog[i].id == 0)
+@@ -2958,7 +2960,7 @@ int mob_damage (struct block_list *src, struct mob_data *md, int damage,
+         if (tmpsd[i]->bl.m != md->bl.m || pc_isdead (tmpsd[i]))
+             continue;
+ 
+-        tdmg += (double) md->dmglog[i].dmg;
++//        tdmg += (double) md->dmglog[i].dmg;
+         if (mvp_damage < md->dmglog[i].dmg)
+         {
+             third_sd = second_sd;
+@@ -2971,11 +2973,12 @@ int mob_damage (struct block_list *src, struct mob_data *md, int damage,
+     // [MouseJstr]
+     if ((map[md->bl.m].flag.pvp == 0) || (battle_config.pvp_exp == 1))
+     {
+-
++/*
+         if ((double) max_hp < tdmg)
+             dmg_rate = ((double) max_hp) / tdmg;
+         else
+             dmg_rate = 1;
++*/
+ 
+         // åoå±ílÇÃï™îz
+         for (i = 0; i < DAMAGELOG_SIZE; i++)
+@@ -3827,7 +3830,7 @@ int mobskill_castend_pos (int tid, unsigned int tick, int id, int data __attribu
+ {
+     struct mob_data *md = NULL;
+     struct block_list *bl;
+-    int  range, maxcount;
++    int  range;
+ 
+     //mobskill_castend_idìØólârè•ÇµÇΩMobÇ™ârè•äÆóπéûÇ…Ç‡Ç§Ç¢Ç»Ç¢Ç∆Ç¢Ç§ÇÃÇÕÇ†ÇËÇªÇ§Ç»ÇÃÇ≈nullpoÇ©ÇÁèúäO
+     if ((bl = map_id2bl (id)) == NULL)
+@@ -3924,6 +3927,7 @@ int mobskill_castend_pos (int tid, unsigned int tick, int id, int data __attribu
+ 
+     if (battle_config.monster_land_skill_limit == 1)
+     {
++        int  maxcount;
+         maxcount = skill_get_maxcount (md->skillid);
+         if (maxcount > 0)
+         {
+diff --git a/src/map/npc.c b/src/map/npc.c
+index ab6f538..485b489 100644
+--- a/src/map/npc.c
++++ b/src/map/npc.c
+@@ -525,14 +525,15 @@ int npc_do_ontimer_sub (void *key, void *data, va_list ap)
+     nullpo_retr (0, c);
+ //  struct map_session_data *sd=va_arg(ap,struct map_session_data *);
+     int  option = va_arg (ap, int);
+-    int  tick = 0;
+     char temp[11];
+     char event[50];
+ 
+     if (ev->nd->bl.id == (int) *c && (p = strchr (p, ':')) && p
+         && strncasecmp ("::OnTimer", p, 8) == 0)
+     {
++        int  tick = 0;
+         sscanf (&p[9], "%10s", temp);
++        temp[10] = 0;
+         tick = atoi (temp);
+ 
+         strcpy (event, ev->nd->name);
+@@ -611,7 +612,7 @@ int npc_timerevent_import (void *key, void *data, va_list ap)
+ int npc_timerevent (int tid __attribute__ ((unused)),
+                     unsigned int tick, int id, int data)
+ {
+-    int  next, t;
++    int  t;
+     struct npc_data *nd = (struct npc_data *) map_id2bl (id);
+     struct npc_timerevent_list *te;
+     if (nd == NULL || nd->u.scr.nexttimer < 0)
+@@ -627,6 +628,7 @@ int npc_timerevent (int tid __attribute__ ((unused)),
+     nd->u.scr.nexttimer++;
+     if (nd->u.scr.timeramount > nd->u.scr.nexttimer)
+     {
++        int  next;
+         next = nd->u.scr.timer_event[nd->u.scr.nexttimer].timer - t;
+         nd->u.scr.timerid = add_timer (tick + next, npc_timerevent, id, next);
+     }
+@@ -1096,7 +1098,7 @@ int npc_buylist (struct map_session_data *sd, int n,
+ {
+     struct npc_data *nd;
+     double z;
+-    int  i, j, w, skill, itemamount = 0, new = 0;
++    int  i, j, w, skill, new = 0;
+ 
+     nullpo_retr (3, sd);
+     nullpo_retr (3, item_list);
+@@ -1125,7 +1127,7 @@ int npc_buylist (struct map_session_data *sd, int n,
+             z += (double) pc_modifybuyvalue (sd,
+                                              nd->u.shop_item[j].value) *
+                 item_list[i * 2];
+-        itemamount += item_list[i * 2];
++//        itemamount += item_list[i * 2];
+ 
+         switch (pc_checkadditem (sd, item_list[i * 2 + 1], item_list[i * 2]))
+         {
+@@ -1214,7 +1216,7 @@ int npc_selllist (struct map_session_data *sd, int n,
+                   unsigned short *item_list)
+ {
+     double z;
+-    int  i, skill, itemamount = 0;
++    int  i, skill;
+ 
+     nullpo_retr (1, sd);
+     nullpo_retr (1, item_list);
+@@ -1239,7 +1241,7 @@ int npc_selllist (struct map_session_data *sd, int n,
+             z += (double) pc_modifysellvalue (sd,
+                                               itemdb_value_sell (nameid)) *
+                 item_list[i * 2 + 1];
+-        itemamount += item_list[i * 2 + 1];
++//        itemamount += item_list[i * 2 + 1];
+     }
+ 
+     if (z > MAX_ZENY)
+@@ -1726,9 +1728,6 @@ static int npc_parse_script (char *w1, char *w2, char *w3, char *w4,
+     }
+     else if (sscanf (w4, "%d,%d,%d", &class, &xs, &ys) == 3)
+     {
+-       // ÔøΩ⁄êGÔøΩ^NPC
+-        int  i, j;
+-
+         if (xs >= 0)
+             xs = xs * 2 + 1;
+         if (ys >= 0)
+@@ -1736,6 +1735,7 @@ static int npc_parse_script (char *w1, char *w2, char *w3, char *w4,
+ 
+         if (class >= 0)
+         {
++            int  i, j;
+             for (i = 0; i < ys; i++)
+             {
+                 for (j = 0; j < xs; j++)
+@@ -2098,7 +2098,7 @@ static int npc_parse_mapflag (char *w1, char *w2, char *w3, char *w4)
+     char mapname[24], savemap[16];
+     int  savex, savey;
+     char drop_arg1[16], drop_arg2[16];
+-    int  drop_id = 0, drop_type = 0, drop_per = 0;
++    int  drop_per = 0;
+ 
+     // ÔøΩÔøΩÔøΩÔøΩÔøΩÃå¬êÔøΩÔøΩ`ÔøΩFÔøΩbÔøΩN
+ //  if (    sscanf(w1,"%[^,],%d,%d,%d",mapname,&x,&y,&dir) != 4 )
+@@ -2175,7 +2175,7 @@ static int npc_parse_mapflag (char *w1, char *w2, char *w3, char *w4)
+         if (sscanf (w4, "%15[^,],%15[^,],%d", drop_arg1, drop_arg2, &drop_per) ==
+             3)
+         {
+-            int  i;
++            int  drop_id = 0, drop_type = 0;
+             if (strcmp (drop_arg1, "random") == 0)
+                 drop_id = -1;
+             else if (itemdb_exists ((drop_id = atoi (drop_arg1))) == NULL)
+@@ -2189,6 +2189,7 @@ static int npc_parse_mapflag (char *w1, char *w2, char *w3, char *w4)
+ 
+             if (drop_id != 0)
+             {
++                int  i;
+                 for (i = 0; i < MAX_DROP_PER_MAP; i++)
+                 {
+                     if (map[m].drop_list[i].drop_id == 0)
+@@ -2330,20 +2331,14 @@ static void npc_free_internal (struct npc_data *nd)
+     }
+     if (nd->bl.subtype == SCRIPT)
+     {
+-        if (nd->u.scr.timer_event)
+-            free (nd->u.scr.timer_event);
++        free (nd->u.scr.timer_event);
++        nd->u.scr.timer_event = 0;
+         if (nd->u.scr.src_id == 0)
+         {
+-            if (nd->u.scr.script)
+-            {
+-                free (nd->u.scr.script);
+-                nd->u.scr.script = NULL;
+-            }
+-            if (nd->u.scr.label_list)
+-            {
+-                free (nd->u.scr.label_list);
+-                nd->u.scr.label_list = NULL;
+-            }
++            free (nd->u.scr.script);
++            nd->u.scr.script = NULL;
++            free (nd->u.scr.label_list);
++            nd->u.scr.label_list = NULL;
+         }
+     }
+     else if (nd->bl.subtype == MESSAGE && nd->u.message)
+@@ -2401,11 +2396,8 @@ int do_final_npc (void)
+                 npc_free_internal (nd);
+             else if (bl->type == BL_MOB && (md = (struct mob_data *) bl))
+             {
+-                if (md->lootitem)
+-                {
+-                    free (md->lootitem);
+-                    md->lootitem = NULL;
+-                }
++                free (md->lootitem);
++                md->lootitem = NULL;
+                 free (md);
+                 md = NULL;
+             }
+@@ -2446,11 +2438,8 @@ int do_init_npc (void)
+ 
+     for (nsl = npc_src_first; nsl; nsl = nsl->next)
+     {
+-        if (nsl->prev)
+-        {
+-            free (nsl->prev);
+-            nsl->prev = NULL;
+-        }
++        free (nsl->prev);
++        nsl->prev = NULL;
+         fp = fopen_ (nsl->name, "r");
+         if (fp == NULL)
+         {
+diff --git a/src/map/party.c b/src/map/party.c
+index afccfd7..62ecdef 100644
+--- a/src/map/party.c
++++ b/src/map/party.c
+@@ -496,13 +496,12 @@ int party_broken (int party_id)
+ // ÉpÅ[ÉeÉBÇÃê›íËïœçXóvãÅ
+ int party_changeoption (struct map_session_data *sd, int exp, int item)
+ {
+-    struct party *p;
+-
+     nullpo_retr (0, sd);
+ 
+     if (sd->status.party_id == 0
+-        || (p = party_search (sd->status.party_id)) == NULL)
++        || party_search (sd->status.party_id) == NULL)
+         return 0;
++
+     intif_party_changeoption (sd->status.party_id, sd->status.account_id, exp,
+                               item);
+     return 0;
+diff --git a/src/map/path.c b/src/map/path.c
+index 99449c3..1f9b55a 100644
+--- a/src/map/path.c
++++ b/src/map/path.c
+@@ -341,7 +341,7 @@ int path_search (struct walkpath_data *wpd, int m, int x0, int y0, int x1,
+     push_heap_path (heap, tp, calc_index (x0, y0));
+     while (1)
+     {
+-        int  e = 0, fromdir;
++        int  e = 0;
+ 
+         if (heap[0] == 0)
+             return -1;
+@@ -364,7 +364,7 @@ int path_search (struct walkpath_data *wpd, int m, int x0, int y0, int x1,
+ 
+             return 0;
+         }
+-        fromdir = tp[rp].dir;
++//        fromdir = tp[rp].dir;
+         if (can_move (md, x, y, x + 1, y - 1, flag))
+             e += add_path (heap, tp, x + 1, y - 1, tp[rp].dist + 14, 5, rp,
+                            x1, y1);
+-- 
+2.1.0
+

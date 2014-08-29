@@ -1,0 +1,276 @@
+From 76ef884ff8f6d17f40fb3b25592de630a56210a8 Mon Sep 17 00:00:00 2001
+From: Andrei Karas <akaras@inbox.ru>
+Date: Sat, 18 Dec 2010 21:57:50 +0200
+Subject: [PATCH 124/226] Add script command npcclick and attachnpc.
+
+npcclick working like click on npc.
+---
+ src/map/clif.c   |  2 +-
+ src/map/map.h    |  2 +-
+ src/map/npc.c    | 30 +++++++++++++++++++++++-------
+ src/map/npc.h    |  2 +-
+ src/map/pc.c     |  2 +-
+ src/map/script.c | 53 ++++++++++++++++++++++++++++++++++++++++++++++++++++-
+ 6 files changed, 79 insertions(+), 12 deletions(-)
+
+diff --git a/src/map/clif.c b/src/map/clif.c
+index 818da37..cc6b6be 100644
+--- a/src/map/clif.c
++++ b/src/map/clif.c
+@@ -7971,7 +7971,7 @@ void clif_parse_NpcClicked (int fd, struct map_session_data *sd)
+     }
+     if (sd->npc_id != 0)
+         return;
+-    npc_click (sd, RFIFOL (fd, 2));
++    npc_click (sd, RFIFOL (fd, 2), 0);
+ }
+ 
+ /*==========================================
+diff --git a/src/map/map.h b/src/map/map.h
+index 83ae696..4bfbc48 100644
+--- a/src/map/map.h
++++ b/src/map/map.h
+@@ -218,7 +218,7 @@ struct map_session_data
+     unsigned int client_tick, server_tick;
+     struct walkpath_data walkpath;
+     int  walktimer;
+-    int  npc_id, areanpc_id, npc_shopid;
++    int  npc_id, areanpc_id, npc_shopid, npc_isservice;
+     int  npc_pos;
+     int  npc_menu;
+     int  npc_amount;
+diff --git a/src/map/npc.c b/src/map/npc.c
+index e5a3470..edd1437 100644
+--- a/src/map/npc.c
++++ b/src/map/npc.c
+@@ -749,7 +749,7 @@ int npc_event (struct map_session_data *sd, const char *eventname,
+ 
+     if (ev == NULL || (nd = ev->nd) == NULL)
+     {
+-        if (mob_kill && (ev == NULL || (nd = ev->nd) == NULL))
++        if (mob_kill == 1 && (ev == NULL || (nd = ev->nd) == NULL))
+         {
+             strcpy (mobevent, eventname);
+             strcat (mobevent, "::OnMyMobDead");
+@@ -771,7 +771,7 @@ int npc_event (struct map_session_data *sd, const char *eventname,
+ 
+     xs = nd->u.scr.xs;
+     ys = nd->u.scr.ys;
+-    if (mob_kill < 2 && xs >= 0 && ys >= 0)
++    if (mob_kill != 2 && xs >= 0 && ys >= 0)
+     {
+         if (nd->bl.m != sd->bl.m)
+             return 1;
+@@ -814,6 +814,11 @@ int npc_event (struct map_session_data *sd, const char *eventname,
+     sd->npc_id = nd->bl.id;
+     sd->npc_pos =
+         run_script (nd->u.scr.script, ev->pos, sd->bl.id, nd->bl.id);
++    if (mob_kill == 2)
++        sd->npc_isservice = 1;
++    else
++        sd->npc_isservice = 0;
++
+     return 0;
+ }
+ 
+@@ -925,7 +930,7 @@ int npc_touch_areanpc (struct map_session_data *sd, int m, int x, int y)
+                 return 1;
+             sd->areanpc_id = map[m].npc[i]->bl.id;
+             if (npc_event (sd, strcat (name, "::OnTouch"), 0) > 0)
+-                npc_click (sd, map[m].npc[i]->bl.id);
++                npc_click (sd, map[m].npc[i]->bl.id, 0);
+             free (name);
+             break;
+         }
+@@ -953,7 +958,10 @@ int npc_checknear (struct map_session_data *sd, int id)
+         return 1;
+     }
+ 
+-    if (nd->class < 0)          // �C�x���g�n�͏���OK
++    if (nd->class < 0)
++        return 0;
++
++    if (sd->npc_isservice)
+         return 0;
+ 
+     // �G���A����
+@@ -971,7 +979,7 @@ int npc_checknear (struct map_session_data *sd, int id)
+  * �N���b�N����NPC����
+  *------------------------------------------
+  */
+-int npc_click (struct map_session_data *sd, int id)
++int npc_click (struct map_session_data *sd, int id, int dontCheck)
+ {
+     struct npc_data *nd;
+ 
+@@ -984,18 +992,25 @@ int npc_click (struct map_session_data *sd, int id)
+         return 1;
+     }
+ 
+-    if (npc_checknear (sd, id)) {
++    sd->npc_isservice = dontCheck;
++    if (npc_checknear (sd, id))
++    {
+         clif_scriptclose (sd, id);
++        sd->npc_isservice = 0;
+         return 1;
+     }
+ 
+     nd = (struct npc_data *) map_id2bl (id);
+     nullpo_retr (1, nd);
+ 
+-    if (nd->flag & 1)           // �����������Ă���
++    if (nd->flag & 1)
++    {
++        sd->npc_isservice = 0;
+         return 1;
++    }
+ 
+     sd->npc_id = id;
++
+     switch (nd->bl.subtype)
+     {
+         case SHOP:
+@@ -1072,6 +1087,7 @@ int npc_buysellsel (struct map_session_data *sd, int id, int type)
+         if (battle_config.error_log)
+             printf ("no such shop npc : %d\n", id);
+         sd->npc_id = 0;
++        sd->npc_isservice = 0;
+         return 1;
+     }
+     if (nd->flag & 1)           // �����������Ă���
+diff --git a/src/map/npc.h b/src/map/npc.h
+index 4c08c02..21a1118 100644
+--- a/src/map/npc.h
++++ b/src/map/npc.h
+@@ -14,7 +14,7 @@ int  npc_event (struct map_session_data *sd, const char *npcname, int);
+ int  npc_timer_event (const char *eventname);   // Added by RoVeRT
+ int  npc_command (struct map_session_data *sd, char *npcname, char *command);
+ int  npc_touch_areanpc (struct map_session_data *, int, int, int);
+-int  npc_click (struct map_session_data *, int);
++int  npc_click (struct map_session_data *, int, int);
+ int  npc_scriptcont (struct map_session_data *, int);
+ int  npc_checknear (struct map_session_data *, int);
+ int  npc_buysellsel (struct map_session_data *, int, int);
+diff --git a/src/map/pc.c b/src/map/pc.c
+index a09f00b..acc82b0 100644
+--- a/src/map/pc.c
++++ b/src/map/pc.c
+@@ -5395,7 +5395,7 @@ int pc_attack (struct map_session_data *sd, int target_id, int type)
+ 
+     if (bl->type == BL_NPC)
+     {                           // monster npcs [Valaris]
+-        npc_click (sd, RFIFOL (sd->fd, 2));
++        npc_click (sd, RFIFOL (sd->fd, 2), 0);
+         return 0;
+     }
+ 
+diff --git a/src/map/script.c b/src/map/script.c
+index 498f13e..f62a251 100644
+--- a/src/map/script.c
++++ b/src/map/script.c
+@@ -217,6 +217,7 @@ int  buildin_getarg (struct script_state *st);
+ int  buildin_next (struct script_state *st);
+ int  buildin_close (struct script_state *st);
+ int  buildin_close2 (struct script_state *st);
++int  buildin_close3 (struct script_state *st);
+ int  buildin_menu (struct script_state *st);
+ int  buildin_rand (struct script_state *st);
+ int  buildin_pow (struct script_state *st);
+@@ -422,6 +423,8 @@ int  buildin_fakenpcname (struct script_state *st); //[Kage]
+ int  buildin_unequip_by_id (struct script_state *st);   // [Freeyorp]
+ int  buildin_setcollision (struct script_state *st); // [4144]
+ int  buildin_spell (struct script_state *st); // [4144]
++int  buildin_npcclick (struct script_state *st); // [4144]
++int  buildin_npcattach (struct script_state *st); // [4144]
+ 
+ void push_val (struct script_stack *stack, int type, int val);
+ int  run_func (struct script_state *st);
+@@ -445,6 +448,8 @@ struct
+     {
+     buildin_close2, "close2", ""},
+     {
++    buildin_close2, "close3", ""},
++    {
+     buildin_menu, "menu", "*"},
+     {
+     buildin_goto, "goto", "l"},
+@@ -863,6 +868,10 @@ struct
+     buildin_setcollision, "setcollision", "siiiii"}, // [4144]
+     {
+     buildin_spell, "spell", "ss"}, // [4144]
++    {
++    buildin_npcclick, "npcclick", "s"}, // [4144]
++    {
++    buildin_npcattach, "npcattach", "s"}, // [4144]
+         // End Additions
+     {
+ NULL, NULL, NULL},};
+@@ -2285,6 +2294,12 @@ BUILDIN_FUNC(close2)
+     return 0;
+ }
+ 
++BUILDIN_FUNC(close3)
++{
++    st->state = STOP;
++    return 0;
++}
++
+ /*==========================================
+  *
+  *------------------------------------------
+@@ -4876,7 +4891,7 @@ BUILDIN_FUNC(doevent)
+ {
+     char *event;
+     event = conv_str (st, &(st->stack->stack_data[st->start + 2]));
+-    npc_event (map_id2sd (st->rid), event, 0);
++    npc_event (map_id2sd (st->rid), event, 2);
+     return 0;
+ }
+ 
+@@ -8074,6 +8089,42 @@ BUILDIN_FUNC(spell)
+     return 0;
+ }
+ 
++BUILDIN_FUNC(npcclick)
++{
++    struct map_session_data *sd;
++    sd = script_rid2sd (st);
++    struct npc_data *npc = npc_name2id(script_getstr(st, 2));
++
++    if (!npc || !sd)
++    {
++        script_pushint(st, 0);
++        return 1;
++    }
++    npc_click (sd, npc->bl.id, 1);
++
++    script_pushint(st, npc->bl.id);
++    return 0;
++}
++
++BUILDIN_FUNC(npcattach)
++{
++    struct map_session_data *sd;
++    sd = script_rid2sd (st);
++    struct npc_data *nd = npc_name2id(script_getstr(st, 2));
++
++    if (!nd || !sd)
++    {
++        script_pushint(st, 0);
++        return 1;
++    }
++    sd->npc_id = nd->bl.id;
++    sd->npc_pos = run_script (nd->u.scr.script, 0, sd->bl.id, nd->bl.id);
++    sd->npc_isservice = 1;
++
++    script_pushint(st, nd->bl.id);
++    return 0;
++}
++
+ //
+ // ��s��main
+ //
+-- 
+2.1.0
+

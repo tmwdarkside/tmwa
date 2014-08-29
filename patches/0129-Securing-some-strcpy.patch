@@ -1,0 +1,310 @@
+From d17a4dc9d7257dca70fd8eaf39fa1d2066a2669c Mon Sep 17 00:00:00 2001
+From: Andrei Karas <akaras@inbox.ru>
+Date: Tue, 21 Dec 2010 03:51:51 +0200
+Subject: [PATCH 129/226] Securing some strcpy.
+
+---
+ src/char/char.c      |  3 ++-
+ src/char/int_guild.c |  4 ++--
+ src/char/int_party.c |  5 +++--
+ src/common/grfio.c   |  7 ++++---
+ src/common/strlib.h  |  2 +-
+ src/login/login.c    | 16 ++++++++--------
+ src/map/atcommand.c  |  5 +++--
+ src/map/map.c        |  9 +++++----
+ src/map/npc.c        | 44 +++++++++++++++++++++++++++++++++++---------
+ 9 files changed, 63 insertions(+), 32 deletions(-)
+
+diff --git a/src/char/char.c b/src/char/char.c
+index a75727b..e1c7e4d 100644
+--- a/src/char/char.c
++++ b/src/char/char.c
+@@ -18,6 +18,7 @@
+ #include <stdarg.h>
+ #include <sys/wait.h>
+ 
++#include "strlib.h"
+ #include "core.h"
+ #include "socket.h"
+ #include "timer.h"
+@@ -1097,7 +1098,7 @@ int make_new_char (int fd, unsigned char *dat)
+     char_dat[i].char_id = char_id_count++;
+     char_dat[i].account_id = sd->account_id;
+     char_dat[i].char_num = dat[30];
+-    strcpy (char_dat[i].name, dat);
++    safestrncpy (char_dat[i].name, dat, 24);
+     char_dat[i].class = 0;
+     char_dat[i].base_level = 1;
+     char_dat[i].job_level = 1;
+diff --git a/src/char/int_guild.c b/src/char/int_guild.c
+index 21e0762..0be07dd 100644
+--- a/src/char/int_guild.c
++++ b/src/char/int_guild.c
+@@ -8,8 +8,8 @@
+ #include "db.h"
+ #include "lock.h"
+ 
+-#include "../common/showmsg.h"
+-#include "../common/strlib.h"
++#include "showmsg.h"
++#include "strlib.h"
+ 
+ #include <string.h>
+ #include <stdio.h>
+diff --git a/src/char/int_party.c b/src/char/int_party.c
+index c6b69ec..bb2f160 100644
+--- a/src/char/int_party.c
++++ b/src/char/int_party.c
+@@ -6,6 +6,7 @@
+ #include "socket.h"
+ #include "db.h"
+ #include "lock.h"
++#include "strlib.h"
+ #include <stdio.h>
+ #include <stdlib.h>
+ #include <string.h>
+@@ -55,12 +56,12 @@ int inter_party_fromstr (char *str, struct party *p)
+ 
+ //  printf("sscanf party main info\n");
+     if (sscanf
+-        (str, "%d\t%255[^\t]\t%d,%d\t", &tmp_int[0], tmp_str, &tmp_int[1],
++        (str, "%d\t%23[^\t]\t%d,%d\t", &tmp_int[0], tmp_str, &tmp_int[1],
+          &tmp_int[2]) != 4)
+         return 1;
+ 
+     p->party_id = tmp_int[0];
+-    strcpy (p->name, tmp_str);
++    safestrncpy (p->name, tmp_str, 24);
+     p->exp = tmp_int[1];
+     p->item = tmp_int[2];
+ //  printf("%d [%s] %d %d\n", tmp_int[0], tmp_str[0], tmp_int[1], tmp_int[2]);
+diff --git a/src/common/grfio.c b/src/common/grfio.c
+index 29210f5..8adb145 100644
+--- a/src/common/grfio.c
++++ b/src/common/grfio.c
+@@ -27,6 +27,7 @@
+ 
+ #include <zlib.h>
+ 
++#include "strlib.h"
+ #include "utils.h"
+ #include "grfio.h"
+ #include "mmo.h"
+@@ -51,7 +52,7 @@ char *grfio_setdatafile (const char *str)
+     if (!str)
+         return 0;
+ 
+-    strcpy (data_file, str);
++    safestrncpy (data_file, str, 1024);
+     return data_file;
+ }
+ 
+@@ -60,7 +61,7 @@ char *grfio_setadatafile (const char *str)
+     if (!str)
+         return 0;
+ 
+-    strcpy (adata_file, str);
++    safestrncpy (adata_file, str, 1024);
+     return adata_file;
+ }
+ 
+@@ -69,7 +70,7 @@ char *grfio_setsdatafile (const char *str)
+     if (!str)
+         return 0;
+ 
+-    strcpy (sdata_file, str);
++    safestrncpy (sdata_file, str, 1024);
+     return sdata_file;
+ }
+ 
+diff --git a/src/common/strlib.h b/src/common/strlib.h
+index 80f3580..7bcfe7c 100644
+--- a/src/common/strlib.h
++++ b/src/common/strlib.h
+@@ -28,7 +28,7 @@ char* _strtok_r(char* s1, const char* s2, char** lasts);
+ size_t strnlen (const char* string, size_t maxlen);
+ #endif
+ 
+-int e_mail_check(char* email);
++//int e_mail_check(char* email);
+ //int config_switch(const char* str);
+ 
+ /// always nul-terminates the string
+diff --git a/src/login/login.c b/src/login/login.c
+index 5b748e0..5dbea32 100644
+--- a/src/login/login.c
++++ b/src/login/login.c
+@@ -698,14 +698,14 @@ int mmo_auth_init (void)
+             pass[39] = '\0';
+             remove_control_chars (pass);
+             // If a password is not encrypted, we encrypt it now.
+-	    // A password beginning with ! and - in the memo field is our magic
+-	    if (pass[0] != '!' && memo[0] == '-') {
+-		strcpy(auth_dat[auth_num].pass, MD5_saltcrypt(pass, make_salt()));
+-		auth_dat[auth_num].memo[0] = '!';
+-		printf("encrypting pass: %s %s\n", pass, auth_dat[auth_num].pass);
+-	    }
+-	    else
+-		strcpy(auth_dat[auth_num].pass, pass);
++            // A password beginning with ! and - in the memo field is our magic
++            if (pass[0] != '!' && memo[0] == '-') {
++                strcpy(auth_dat[auth_num].pass, MD5_saltcrypt(pass, make_salt()));
++                auth_dat[auth_num].memo[0] = '!';
++                printf("encrypting pass: %s %s\n", pass, auth_dat[auth_num].pass);
++            }
++            else
++                strcpy(auth_dat[auth_num].pass, pass);
+ 
+             lastlogin[23] = '\0';
+             remove_control_chars (lastlogin);
+diff --git a/src/map/atcommand.c b/src/map/atcommand.c
+index 236d420..01ae60c 100644
+--- a/src/map/atcommand.c
++++ b/src/map/atcommand.c
+@@ -14,6 +14,7 @@
+ #include "timer.h"
+ #include "nullpo.h"
+ 
++#include "strlib.h"
+ #include "atcommand.h"
+ #include "battle.h"
+ #include "clif.h"
+@@ -868,7 +869,7 @@ static int atkillmonster_sub (struct block_list *bl, va_list ap)
+ int msg_config_read (const char *cfgName)
+ {
+     int  msg_number;
+-    char line[1024], w1[1024], w2[1024];
++    char line[1023], w1[1024], w2[1024];
+     FILE *fp;
+ 
+     if (!cfgName)
+@@ -1197,7 +1198,7 @@ int atcommand_where (const int fd, struct map_session_data *sd,
+     memset (output, '\0', sizeof (output));
+ 
+     if (sscanf (message, "%99[^\n]", character) < 1)
+-        strcpy (character, sd->status.name);
++        safestrncpy (character, sd->status.name, 100);
+ 
+     if ((pl_sd = map_nick2sd (character)) != NULL &&
+         !((battle_config.hide_GM_session
+diff --git a/src/map/map.c b/src/map/map.c
+index 7b6fb65..ec7a5de 100644
+--- a/src/map/map.c
++++ b/src/map/map.c
+@@ -9,6 +9,7 @@
+ #include <netdb.h>
+ #endif
+ 
++#include "strlib.h"
+ #include "core.h"
+ #include "timer.h"
+ #include "db.h"
+@@ -1830,7 +1831,7 @@ static void map_readwater (char *watertxt)
+         int  wh, count;
+         if (line[0] == '/' && line[1] == '/')
+             continue;
+-        if ((count = sscanf (line, "%2000s%d", w1, &wh)) < 1)
++        if ((count = sscanf (line, "%23s%d", w1, &wh)) < 1)
+         {
+             continue;
+         }
+@@ -2248,15 +2249,15 @@ int map_config_read (char *cfgName)
+             }
+             else if (strcmpi (w1, "motd_txt") == 0)
+             {
+-                strcpy (motd_txt, w2);
++                safestrncpy (motd_txt, w2, 256);
+             }
+             else if (strcmpi (w1, "help_txt") == 0)
+             {
+-                strcpy (help_txt, w2);
++                safestrncpy (help_txt, w2, 256);
+             }
+             else if (strcmpi (w1, "mapreg_txt") == 0)
+             {
+-                strcpy (mapreg_txt, w2);
++                safestrncpy (mapreg_txt, w2, 256);
+             }
+             else if (strcmpi (w1, "gm_log") == 0)
+             {
+diff --git a/src/map/npc.c b/src/map/npc.c
+index edd1437..e63c456 100644
+--- a/src/map/npc.c
++++ b/src/map/npc.c
+@@ -536,6 +536,11 @@ int npc_do_ontimer_sub (void *key, void *data, va_list ap)
+         temp[10] = 0;
+         tick = atoi (temp);
+ 
++        if (strlen(ev->nd->name) + strlen(p) > 49)
++        {
++            printf ("npc_do_ontimer_sub overflow: %s, %s\n", ev->nd->name, p);
++            return 0;
++        }
+         strcpy (event, ev->nd->name);
+         strcat (event, p);
+ 
+@@ -751,14 +756,22 @@ int npc_event (struct map_session_data *sd, const char *eventname,
+     {
+         if (mob_kill == 1 && (ev == NULL || (nd = ev->nd) == NULL))
+         {
+-            strcpy (mobevent, eventname);
+-            strcat (mobevent, "::OnMyMobDead");
+-            ev = strdb_search (ev_db, mobevent);
+-            if (ev == NULL || (nd = ev->nd) == NULL)
++            if (strlen(eventname) + strlen("::OnMyMobDead") < 100)
++            {
++                strcpy (mobevent, eventname);
++                strcat (mobevent, "::OnMyMobDead");
++                ev = strdb_search (ev_db, mobevent);
++                if (ev == NULL || (nd = ev->nd) == NULL)
++                {
++                    if (strncasecmp (eventname, "GM_MONSTER", 10) != 0)
++                        printf ("npc_event: event not found [%s]\n", mobevent);
++                    return 0;
++                }
++            }
++            else
+             {
+-                if (strncasecmp (eventname, "GM_MONSTER", 10) != 0)
+-                    printf ("npc_event: event not found [%s]\n", mobevent);
+-                return 0;
++                printf ("npc_event overflow: %s\n", eventname);
++                return 1;
+             }
+         }
+         else
+@@ -1671,6 +1684,12 @@ static int npc_parse_script (char *w1, char *w2, char *w3, char *w4,
+         srcbuf = (char *) aCalloc (srcsize, sizeof (char));
+         if (strchr (first_line, '{'))
+         {
++            if (strlen(first_line) > srcsize - 1)
++            {
++                printf ("script size to big\n");
++                free (srcbuf);
++                return 1;
++            }
+             strcpy (srcbuf, strchr (first_line, '{'));
+             startline = *lines;
+         }
+@@ -1954,9 +1973,16 @@ static int npc_parse_function (char *w1, char *w2, char *w3, char *w4,
+ 
+     // �X�N���v�g�̉���
+     srcbuf = (char *) aCalloc (srcsize, sizeof (char));
+-    if (strchr (first_line, '{'))
++    char *ptr = strchr (first_line, '{');
++    if (ptr)
+     {
+-        strcpy (srcbuf, strchr (first_line, '{'));
++        if (strlen(ptr) >= srcsize)
++        {
++            printf ("npc_parse_function size to big\n");
++            free (srcbuf);
++            return 1;
++        }
++        strcpy (srcbuf, ptr);
+         startline = *lines;
+     }
+     else
+-- 
+2.1.0
+

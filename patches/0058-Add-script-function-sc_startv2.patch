@@ -1,0 +1,77 @@
+From d0fbc549bd6bb85556b788a43282c22b3f50ad40 Mon Sep 17 00:00:00 2001
+From: Andrei Karas <akaras@inbox.ru>
+Date: Mon, 29 Nov 2010 04:51:52 +0200
+Subject: [PATCH 058/226] Add script function sc_startv2
+
+This function allow invoke skill with two parameters (va1l, val2).
+Also fixed SC_WINDWALK. Now it calc val2 from val1 only if val2 is 0.
+---
+ src/map/script.c | 23 +++++++++++++++++++++++
+ src/map/skill.c  |  3 ++-
+ 2 files changed, 25 insertions(+), 1 deletion(-)
+
+diff --git a/src/map/script.c b/src/map/script.c
+index 3d76f98..347937c 100644
+--- a/src/map/script.c
++++ b/src/map/script.c
+@@ -232,6 +232,7 @@ int  buildin_disablearena (struct script_state *st);    // Added by RoVeRT
+ int  buildin_hideoffnpc (struct script_state *st);
+ int  buildin_hideonnpc (struct script_state *st);
+ int  buildin_sc_start (struct script_state *st);
++int  buildin_sc_startv2 (struct script_state *st);
+ int  buildin_sc_start2 (struct script_state *st);
+ int  buildin_sc_end (struct script_state *st);
+ int  buildin_sc_check (struct script_state *st);    // [Fate]
+@@ -570,6 +571,8 @@ struct
+     {
+     buildin_sc_start, "sc_start", "iii*"},
+     {
++    buildin_sc_startv2, "sc_startv2", "iiii*"},
++    {
+     buildin_sc_start2, "sc_start2", "iiii*"},
+     {
+     buildin_sc_end, "sc_end", "i"},
+@@ -4915,6 +4918,26 @@ int buildin_sc_start (struct script_state *st)
+     return 0;
+ }
+ 
++int buildin_sc_startv2 (struct script_state *st)
++{
++    struct block_list *bl;
++    int  type, tick, val1, val2;
++    type = conv_num (st, &(st->stack->stack_data[st->start + 2]));
++    tick = conv_num (st, &(st->stack->stack_data[st->start + 3]));
++    val1 = conv_num (st, &(st->stack->stack_data[st->start + 4]));
++    val2 = conv_num (st, &(st->stack->stack_data[st->start + 5]));
++    if (st->end > st->start + 6)    //ï¿½wï¿½è‚µï¿½ï¿½ï¿½Lï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ÔˆÙï¿½ï¿½É‚ï¿½ï¿½ï¿½
++        bl = map_id2bl (conv_num
++                        (st, &(st->stack->stack_data[st->start + 6])));
++    else
++        bl = map_id2bl (st->rid);
++    if (bl->type == BL_PC
++        && ((struct map_session_data *) bl)->state.potionpitcher_flag)
++        bl = map_id2bl (((struct map_session_data *) bl)->skilltarget);
++    skill_status_change_start (bl, type, val1, val2, 0, 0, tick, 0);
++    return 0;
++}
++
+ /*==========================================
+  * ï¿½ï¿½ï¿½ÔˆÙï¿½ï¿½É‚ï¿½ï¿½ï¿½ï¿½ï¿½(ï¿½mï¿½ï¿½ï¿½wï¿½ï¿½)
+  *------------------------------------------
+diff --git a/src/map/skill.c b/src/map/skill.c
+index 43f61e9..00c7226 100644
+--- a/src/map/skill.c
++++ b/src/map/skill.c
+@@ -10807,7 +10807,8 @@ int skill_status_effect (struct block_list *bl, int type, int val1, int val2,
+ */
+         case SC_WINDWALK:      /* ƒEƒCƒ“ƒhƒEƒH[ƒN */
+             calc_flag = 1;
+-            val2 = (val1 / 2);  //Fleeã¸—¦
++            if (!val2)
++                val2 = (val1 / 2);  //Fleeã¸—¦
+             break;
+         case SC_BERSERK:       /* ƒo[ƒT[ƒN */
+             if (sd)
+-- 
+2.1.0
+

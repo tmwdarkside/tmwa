@@ -1,0 +1,75 @@
+From 6c5d8a440eea926a8cf4e217de53a80762a9c000 Mon Sep 17 00:00:00 2001
+From: Andrei Karas <akaras@inbox.ru>
+Date: Fri, 3 Dec 2010 02:01:24 +0200
+Subject: [PATCH 075/226] Add missing checks to resurrect magic op.
+
+Also bit fix code style.
+---
+ src/map/magic-stmt.c | 39 ++++++++++++++++++++++-----------------
+ 1 file changed, 22 insertions(+), 17 deletions(-)
+
+diff --git a/src/map/magic-stmt.c b/src/map/magic-stmt.c
+index d2fb833..dc85331 100644
+--- a/src/map/magic-stmt.c
++++ b/src/map/magic-stmt.c
+@@ -1002,35 +1002,40 @@ static int op_gain_exp (env_t * env __attribute__ ((unused)), int args_nr __attr
+ //UFB
+ static int op_resurrect (env_t * env, int args_nr, val_t * args)
+ {
+-    character_t *sd = (ETY (0) == BL_PC) ? ARGPC (0) : NULL;
++    if (!args)
++        return 1;
+ 
+-	int perc_hp = (ARGINT (1) > 0) ? ( ARGINT (1) > 100) ? 100 : (ARGINT (1) / 100 ) : 50;
+-	int perc_mp = (ARGINT (2) > 0) ? ( ARGINT (2) > 100) ? 100 : (ARGINT (2) / 100 ) : 50;
++    character_t *sd = (ETY (0) == BL_PC) ? ARGPC (0) : NULL;
+ 
+-    if (!sd || !pc_isdead(sd))
++    if (!sd || !pc_isdead (sd))
+         return 1;
+ 
+-	// 3rd param == 1 then restore the char hp and sp in percentage
+-	if(ARGINT (3) == 1){
+-		sd->status.hp = sd->status.max_hp * perc_hp;
+-		sd->status.sp = sd->status.max_sp * perc_mp;
+-	}
+-	else{
+-		sd->status.hp = (ARGINT (1) > 0) ? ( (ARGINT (1) > sd->status.max_hp) ? sd->status.max_hp : ARGINT (1) ) : 1;
+-		sd->status.sp = (ARGINT (2) > 0) ? ( (ARGINT (2) > sd->status.max_hp) ? sd->status.max_hp : ARGINT (2) ) : 1;
+-	}
++    int perc_hp = (ARGINT (1) > 0) ? (ARGINT (1) > 100) ? 100 : (ARGINT (1) / 100) : 50;
++    int perc_mp = (ARGINT (2) > 0) ? (ARGINT (2) > 100) ? 100 : (ARGINT (2) / 100) : 50;
++
++    // 3rd param == 1 then restore the char hp and sp in percentage
++    if(ARGINT (3) == 1)
++    {
++        sd->status.hp = sd->status.max_hp * perc_hp;
++        sd->status.sp = sd->status.max_sp * perc_mp;
++    }
++    else
++    {
++        sd->status.hp = (ARGINT (1) > 0) ? ((ARGINT (1) > sd->status.max_hp) ? sd->status.max_hp : ARGINT (1)) : 1;
++        sd->status.sp = (ARGINT (2) > 0) ? ((ARGINT (2) > sd->status.max_hp) ? sd->status.max_hp : ARGINT (2)) : 1;
++    }
+ 
+     pc_setstand (sd);
+     if (battle_config.pc_invincible_time > 0)
+         pc_setinvincibletimer (sd, battle_config.pc_invincible_time);
+ 
+-	//restore hp and sp and resurrect the char
++    //restore hp and sp and resurrect the char
+     clif_updatestatus (sd, SP_HP);
+     clif_updatestatus (sd, SP_SP);
+     clif_resurrection (&sd->bl, 1);
+-	//bug fix for some clients that leave the char lying on the floor
+-	pc_setpos (sd, sd->mapname, sd->bl.x, sd->bl.y, 3);
+-	//message to display to che resurrected char
++    //bug fix for some clients that leave the char lying on the floor
++    pc_setpos (sd, sd->mapname, sd->bl.x, sd->bl.y, 3);
++    //message to display to che resurrected char
+     clif_displaymessage (sd->fd, "You've been revived! It's a miracle!");
+ 
+     return 0;
+-- 
+2.1.0
+

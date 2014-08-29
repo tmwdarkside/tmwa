@@ -1,0 +1,37 @@
+From b1ef08458e9e22ba00a308dede90699799255ed3 Mon Sep 17 00:00:00 2001
+From: Andrei Karas <akaras@inbox.ru>
+Date: Fri, 17 Dec 2010 23:43:16 +0200
+Subject: [PATCH 112/226] Add to mob packets 0x78 and 0x7b mob hp and maxhp.
+
+---
+ src/map/clif.c | 7 +++++++
+ 1 file changed, 7 insertions(+)
+
+diff --git a/src/map/clif.c b/src/map/clif.c
+index c0234f1..66f3f88 100644
+--- a/src/map/clif.c
++++ b/src/map/clif.c
+@@ -1121,6 +1121,9 @@ static int clif_mob0078 (struct mob_data *md, unsigned char *buf)
+         }
+     }                           // End addition
+ 
++    WBUFL (buf, 32) = md->hp;
++    WBUFL (buf, 36) = mob_db[md->class].max_hp;
++
+     WBUFPOS (buf, 46, md->bl.x, md->bl.y);
+     WBUFB (buf, 48) |= md->dir & 0x0f;
+     WBUFB (buf, 49) = 5;
+@@ -1187,6 +1190,10 @@ static int clif_mob007b (struct mob_data *md, unsigned char *buf)
+         }
+     }                           // End addition
+ 
++
++    WBUFL (buf, 36) = md->hp;
++    WBUFL (buf, 40) = mob_db[md->class].max_hp;
++
+     WBUFPOS2 (buf, 50, md->bl.x, md->bl.y, md->to_x, md->to_y);
+     WBUFB (buf, 56) = 5;
+     WBUFB (buf, 57) = 5;
+-- 
+2.1.0
+

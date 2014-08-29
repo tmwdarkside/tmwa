@@ -1,0 +1,23 @@
+From ae2220336ebea39988a73b48593641d3c4baf714 Mon Sep 17 00:00:00 2001
+From: Andrei Karas <akaras@inbox.ru>
+Date: Tue, 16 Nov 2010 21:26:30 +0200
+Subject: [PATCH 024/226] Add build logs to ignore list.
+
+---
+ .gitignore | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
+
+diff --git a/.gitignore b/.gitignore
+index b5399e3..2f9f5ec 100644
+--- a/.gitignore
++++ b/.gitignore
+@@ -9,4 +9,5 @@ eathena-monitor
+ magic-interpreter-parser.h
+ magic-interpreter-parser.c
+ magic-interpreter-lexer.c
+-
++make1.txt
++make2.txt
+-- 
+2.1.0
+

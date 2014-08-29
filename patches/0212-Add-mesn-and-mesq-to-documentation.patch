@@ -1,0 +1,51 @@
+From 042e91f0cd46634f4b3e80467322f5dbbd9db3b6 Mon Sep 17 00:00:00 2001
+From: Andrei Karas <akaras@inbox.ru>
+Date: Mon, 31 Jan 2011 20:59:45 +0200
+Subject: [PATCH 212/226] Add mesn and mesq to documentation.
+
+---
+ doc/scripts.txt | 19 +++++++++++++------
+ 1 file changed, 13 insertions(+), 6 deletions(-)
+
+diff --git a/doc/scripts.txt b/doc/scripts.txt
+index b3589ef..0992d8e 100644
+--- a/doc/scripts.txt
++++ b/doc/scripts.txt
+@@ -1,14 +1,15 @@
+-
+ todo add script functions
+ 
+-geta (variable, index)
+-    get bit at given index.
++mesn text
++    show message like: [text]
+ 
+-    each value can be 0 - 1
+ 
++mesq text
++    show message like: "text"
+ 
+-seta variable, index, value
+-    set bit at given index
++
++geta (variable, index)
++    get bit at given index.
+ 
+     each value can be 0 - 1
+ 
+@@ -19,6 +20,12 @@ geta2 (variable, index)
+     each value can be 0 - 3
+ 
+ 
++seta variable, index, value
++    set bit at given index
++
++    each value can be 0 - 1
++
++
+ seta2 variable, index, value
+     set two bit at given index
+ 
+-- 
+2.1.0
+

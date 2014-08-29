@@ -1,0 +1,35 @@
+From c6161bc0ea885f240cfa0cac599b06a0842a6c0b Mon Sep 17 00:00:00 2001
+From: Andrei Karas <akaras@inbox.ru>
+Date: Wed, 22 Dec 2010 04:51:29 +0200
+Subject: [PATCH 132/226] Remove check for already connected npc in npcevent
+ and doevent.
+
+---
+ src/map/script.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/src/map/script.c b/src/map/script.c
+index 9ad8f9c..c87cad5 100644
+--- a/src/map/script.c
++++ b/src/map/script.c
+@@ -4896,7 +4896,7 @@ BUILDIN_FUNC(killmonsterall)
+ BUILDIN_FUNC(doevent)
+ {
+     struct map_session_data *sd = script_rid2sd (st);
+-    if (!sd || sd->npc_id != 0)
++    if (!sd)
+         return 0;
+ 
+     char *event;
+@@ -4912,7 +4912,7 @@ BUILDIN_FUNC(doevent)
+ BUILDIN_FUNC(donpcevent)
+ {
+     struct map_session_data *sd = script_rid2sd (st);
+-    if (!sd || sd->npc_id != 0)
++    if (!sd)
+         return 0;
+ 
+     char *event;
+-- 
+2.1.0
+
