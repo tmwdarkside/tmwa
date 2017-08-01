@@ -44,8 +44,8 @@ constexpr size_t ACCOUNT_REG2_NUM = 16;
 constexpr interval_t DEFAULT_WALK_SPEED = 150_ms;
 constexpr interval_t MIN_WALK_SPEED = interval_t::zero();
 constexpr interval_t MAX_WALK_SPEED = 1_s;
-constexpr int MAX_STORAGE = 300;
-constexpr int MAX_PARTY = 12;
+constexpr int MAX_STORAGE = 500;
+constexpr int MAX_PARTY = 100;
 
 #define MIN_HAIR_STYLE battle_config.min_hair_style
 #define MAX_HAIR_STYLE battle_config.max_hair_style
